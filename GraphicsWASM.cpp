@@ -60,7 +60,7 @@ extern "C" int wasmGraphics_ShaderGetUniform(int program, const char* name, int 
 extern "C" int wasmGraphics_ShaderGetAttribute(int program, const char* name, int name_len);
 extern "C" int wasmGraphics_ResetVertexLayout(int id);
 extern "C" void wasmGraphics_BindVAO(int vaoId);
-extern "C" void wasmGraphics_DeviceBindTexture(int textureUnitEnum, int textureUnitNumber int textureTarget, int textureId, int uniformSlot, int minFilter, int magFilter, int wrapS, int wrapT, int wrapR, bool updateSampler);
+extern "C" void wasmGraphics_DeviceBindTexture(int textureUnitEnum, int textureUnitNumber, int textureTarget, int textureId, int uniformSlot, int minFilter, int magFilter, int wrapS, int wrapT, int wrapR, bool updateSampler);
 extern "C" void wasmGraphics_DeviceSetUniform(int type, int slotId, int count, void* data);
 extern "C" void wasmGraphics_DeviceBindShader(int programId, unsigned int boundTextures);
 extern "C" void wasmGraphics_SetDefaultGLState();
@@ -68,92 +68,86 @@ extern "C" void wasmGraphics_GetScissorAndViewport(void* scissorPtr, void* viewP
 extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, const void* fShader, int fShaderLen);
 
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants#standard_webgl_1_constants
-#define GL_ALWAYS						0
-#define GL_NEVER						0
-#define GL_EQUAL						0
-#define GL_LEQUAL						0
-#define GL_GREATER						0
-#define GL_GEQUAL						0
-#define GL_NOTEQUAL						0
-#define GL_LESS							0
-#define GL_TEXTURE0						0
-#define GL_FUNC_SUBTRACT				0
-#define GL_FUNC_REVERSE_SUBTRACT		0
-#define GL_MIN							0
-#define GL_MAX							0
-#define GL_FUNC_ADD						0
-#define GL_ZERO							0
-#define GL_ONE							0
-#define GL_SRC_COLOR					0
-#define GL_ONE_MINUS_SRC_COLOR			0
-#define GL_DST_COLOR					0
-#define GL_ONE_MINUS_DST_COLOR			0
-#define GL_SRC_ALPHA					0
-#define GL_ONE_MINUS_SRC_ALPHA			0
-#define GL_DST_ALPHA					0
-#define GL_ONE_MINUS_DST_ALPHA			0
-#define GL_CONSTANT_COLOR				0
-#define GL_ONE_MINUS_CONSTANT_COLOR		0
-#define GL_CONSTANT_ALPHA				0
-#define GL_ONE_MINUS_CONSTANT_ALPHA		0
-#define GL_SRC_ALPHA_SATURATE			0
-#define GL_TRIANGLES					0
-#define GL_POINTS						0
-#define GL_LINES						0
-#define GL_LINE_STRIP					0
-#define GL_TRIANGLE_STRIP				0
-#define GL_TRIANGLE_FAN					0
-#define GL_R8							0
-#define GL_RG8							0
-#define GL_RGB8							0
-#define GL_RGBA8						0
-#define GL_R32F							0
-#define GL_RG32F						0
-#define GL_RGB32F						0
-#define GL_RGBA32F						0
-#define GL_DEPTH_COMPONENT				0
-#define GL_UNSIGNED_BYTE				0
-#define GL_RG							0
-#define GL_RGB							0
-#define GL_RGBA							0
-#define GL_RED							0
-#define GL_FLOAT						0
-#define GL_BYTE							0
-#define GL_SHORT						0
-#define GL_UNSIGNED_BYTE				0
-#define GL_INT							0
-#define GL_UNSIGNED_INT					0
-#define GL_UNSIGNED_SHORT				0
-#define GL_TEXTURE_2D					0x0DE1
-#define GL_TEXTURE_CUBE_MAP				0
 #define GL_NONE							0
-#define GL_COMPARE_REF_TO_TEXTURE		0
-#define GL_BACK							0
-#define GL_CCW							0
-#define GL_FRONT						0
-#define GL_FRONT_AND_BACK				0
-#define GL_CW							0
-#define GL_DEPTH_TEST					0
-#define GL_NEAREST_MIPMAP_LINEAR		0
-#define GL_LINEAR						0
-#define GL_REPEAT						0
-#define GL_COLOR_ATTACHMENT0			0
-#define GL_COLOR_ATTACHMENT1			0
-#define GL_COLOR_ATTACHMENT2			0
-#define GL_COLOR_ATTACHMENT3			0
-#define GL_COLOR_ATTACHMENT4			0
-#define GL_COLOR_ATTACHMENT5			0
-#define GL_COLOR_ATTACHMENT6			0
-#define GL_COLOR_ATTACHMENT7			0
-#define GL_NEAREST						0
-#define GL_NEAREST_MIPMAP_NEAREST		0
-#define GL_LINEAR_MIPMAP_NEAREST		0
-#define GL_LINEAR_MIPMAP_LINEAR			0
-#define GL_CLAMP_TO_EDGE				0
-
-
-
-extern unsigned char __heap_base;
+#define GL_ZERO							0
+#define GL_ONE							1
+#define GL_ALWAYS						0x0207
+#define GL_NEVER						0x0200
+#define GL_EQUAL						0x0202
+#define GL_LEQUAL						0x0203
+#define GL_GREATER						0x0204
+#define GL_GEQUAL						0x0206
+#define GL_NOTEQUAL						0x0205
+#define GL_LESS							0x0201
+#define GL_TEXTURE0						0x84C0
+#define GL_FUNC_SUBTRACT				0x800A
+#define GL_FUNC_REVERSE_SUBTRACT		0x800B
+#define GL_MIN							0x8007
+#define GL_MAX							0x8008
+#define GL_FUNC_ADD						0x8006
+#define GL_SRC_COLOR					0x0300
+#define GL_ONE_MINUS_SRC_COLOR			0x0301
+#define GL_DST_COLOR					0x0306
+#define GL_ONE_MINUS_DST_COLOR			0x0307
+#define GL_SRC_ALPHA					0x0302
+#define GL_ONE_MINUS_SRC_ALPHA			0x0303
+#define GL_DST_ALPHA					0x0304
+#define GL_ONE_MINUS_DST_ALPHA			0x0305
+#define GL_CONSTANT_COLOR				0x8001
+#define GL_ONE_MINUS_CONSTANT_COLOR		0x8002
+#define GL_CONSTANT_ALPHA				0x8003
+#define GL_ONE_MINUS_CONSTANT_ALPHA		0x8004
+#define GL_SRC_ALPHA_SATURATE			0x0308
+#define GL_TRIANGLES					0x0004
+#define GL_POINTS						0x0000
+#define GL_LINES						0x0001
+#define GL_LINE_STRIP					0x0003
+#define GL_TRIANGLE_STRIP				0x0005
+#define GL_TRIANGLE_FAN					0x0006
+#define GL_R8							0x8229
+#define GL_RG8							0x822B
+#define GL_RGB8							0x8051
+#define GL_RGBA8						0x8058
+#define GL_R32F							0x822E
+#define GL_RG32F						0x8230
+#define GL_RGB32F						0x8815
+#define GL_RGBA32F						0x8814
+#define GL_DEPTH_COMPONENT				0x1902
+#define GL_UNSIGNED_BYTE				0x1401
+#define GL_RGB							0x1907
+#define GL_RGBA							0x1908
+#define GL_RED							0x1903
+#define GL_FLOAT						0x1406
+#define GL_BYTE							0x1400
+#define GL_SHORT						0x1402
+#define GL_INT							0x1404
+#define GL_UNSIGNED_INT					0x1405
+#define GL_UNSIGNED_SHORT				0x1403	
+#define GL_TEXTURE_2D					0x0DE1
+#define GL_TEXTURE_CUBE_MAP				0x8513
+#define GL_COMPARE_REF_TO_TEXTURE		0x884E
+#define GL_BACK							0x0405
+#define GL_CCW							0x0901
+#define GL_FRONT						0x0404
+#define GL_FRONT_AND_BACK				0x0408
+#define GL_CW							0x0900
+#define GL_DEPTH_TEST					0x0B71
+#define GL_NEAREST_MIPMAP_LINEAR		0x2702
+#define GL_LINEAR						0x2601
+#define GL_REPEAT						0x2901
+#define GL_COLOR_ATTACHMENT0			0x8CE0
+#define GL_COLOR_ATTACHMENT1			0x8CE1
+#define GL_COLOR_ATTACHMENT2			0x8CE2
+#define GL_COLOR_ATTACHMENT3			0x8CE3
+#define GL_COLOR_ATTACHMENT4			0x8CE4
+#define GL_COLOR_ATTACHMENT5			0x8CE5
+#define GL_COLOR_ATTACHMENT6			0x8CE6
+#define GL_COLOR_ATTACHMENT7			0x8CE7
+#define GL_NEAREST						0x2600
+#define GL_NEAREST_MIPMAP_NEAREST		0x2700
+#define GL_LINEAR_MIPMAP_NEAREST		0x2701
+#define GL_LINEAR_MIPMAP_LINEAR			0x2703
+#define GL_CLAMP_TO_EDGE				0x812F
 
 // Helpers
 namespace Graphics {
@@ -348,7 +342,7 @@ namespace Graphics {
 				dataType = GL_UNSIGNED_BYTE;
 			}
 			else if (component == TextureFormat::RG8) {
-				dataFormat = GL_RG;
+				dataFormat = GL_RG8;
 				dataType = GL_UNSIGNED_BYTE;
 			}
 			if (component == TextureFormat::RGB8) {
@@ -365,7 +359,7 @@ namespace Graphics {
 				dataType = GL_FLOAT;
 			}
 			else if (component == TextureFormat::RG32F) {
-				dataFormat = GL_RG;
+				dataFormat = GL_RG32F;
 				dataType = GL_FLOAT;
 			}
 			if (component == TextureFormat::RGB32F) {
@@ -949,7 +943,6 @@ void Graphics::Device::Bind(Shader* shader) {
 	
 	if (mBoundProgram != program) {
 		mBoundProgram = program;
-		//bool bound[32];
 		u32 bound = 0;
 		{  // Unbind any previously bound textures
 			for (u32 i = 0; i < 32; ++i) {
@@ -958,11 +951,7 @@ void Graphics::Device::Bind(Shader* shader) {
 					mBoundTextures[i].target = 0;
 					mBoundTextures[i].index.id = 0;
 					mBoundTextures[i].index.valid = false;
-					//bound[i] = true;
 					bound |= (1U << i);
-				}
-				else {
-					//bound[i] = false;
 				}
 			}
 		}
@@ -1361,5 +1350,5 @@ export Graphics::Device* wasm_Graphics_Initialize(Graphics::fpRequest allocPtr, 
 }
 
 export void wasm_Graphics_Shutdown(Graphics::Device* device) {
-	// TODO: Shutdown here
+	Graphics::Shutdown(*device);
 }

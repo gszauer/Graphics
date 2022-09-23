@@ -1,19 +1,10 @@
 'use strict';
-/*jshint_esversion: 6 */
-/*jshint_bitwise: false*/
-
-// https://webglreport.com/?v=2
-
+/*jshint esversion: 6 */
+/*jshint bitwise: false*/
 class GraphicsManager {
-    // this.env -> Web assembly import object .env
-    // this.gl -> WebGL object
-    // this.devicePtr -> C++ device pointer created on injection
-    // this.exports -> wasm exports
-    // this.log -> log function or null
-    // this.memory = wasm memory
-
+    // https://webglreport.com/?v=2
     constructor(gl, logFunc) {
-        this.gl = gl;
+        this.gl = gl;   
         this.log = logFunc;
         this.env = null;
         this.devicePtr = null;
@@ -23,16 +14,16 @@ class GraphicsManager {
         this.decoder =  new TextDecoder();
 
         this.textures = [];
-        this.textures.push(null); // Index 0 is invalid
+        this.textures.push(null);
 
         this.vaos = [];
-        this.vaos.push(null); // Index 0 is invalid
+        this.vaos.push(null);
 
         this.fbos = [];
-        this.fbos.push(null); // Index 0 is invalid
+        this.fbos.push(null);
 
         this.vbos = [];
-        this.vbos.push(null); // Index 0 is invalid
+        this.vbos.push(null); 
 
         this.shaders = [];
         this.shaders.push(null);
@@ -42,54 +33,54 @@ class GraphicsManager {
         this.env = wasmImportObject.env;
         wasmImportObject.graphicsManager = this;
         
-        this.env["wasmGraphics_Log"] = this.wasmGraphics_Log;
-        this.env["wasmGraphics_SetTexturePCM"] = this.wasmGraphics_SetTexturePCM;
-        this.env["wasmGraphics_TextureSetData"] = this.wasmGraphics_TextureSetData;
-        this.env["wasmGraphics_TextureSetCubemap"] = this.wasmGraphics_TextureSetCubemap;
-        this.env["wasmGraphics_DeviceSetFaceVisibility"] = this.wasmGraphics_DeviceSetFaceVisibility;
-        this.env["wasmGraphics_DeviceClearRGBAD"] = this.wasmGraphics_DeviceClearRGBAD;
-        this.env["wasmGraphics_SetDepthState"] = this.wasmGraphics_SetDepthState;
-        this.env["wasmGraphics_DeviceClearBufferBits"] = this.wasmGraphics_DeviceClearBufferBits;
-        this.env["wasmGraphics_DeviceWriteMask"] = this.wasmGraphics_DeviceWriteMask;
-        this.env["wasmGraphics_SetGLBlendFuncEnabled"] = this.wasmGraphics_SetGLBlendFuncEnabled;
-        this.env["wasmGraphics_UpdateGLBlendColor"] = this.wasmGraphics_UpdateGLBlendColor;
-        this.env["wasmGraphics_ChangeGLBlendFuncSame"] = this.wasmGraphics_ChangeGLBlendFuncSame;
-        this.env["wasmGraphics_ChangeGLBlendFuncSeperate"] = this.wasmGraphics_ChangeGLBlendFuncSeperate;
-        this.env["wasmGraphics_ChangeGLBlendEquation"] = this.wasmGraphics_ChangeGLBlendEquation;
-        this.env["wasmGraphics_ChangeGLBlendEquationSeparate"] = this.wasmGraphics_ChangeGLBlendEquationSeparate;
-        this.env["wasmGraphics_DeviceClearColor"] = this.wasmGraphics_DeviceClearColor;
-        this.env["wasmGraphics_DeviceClearDepth"] = this.wasmGraphics_DeviceClearDepth;
-        this.env["wasmGraphics_SetGLViewport"] = this.wasmGraphics_SetGLViewport;
-        this.env["wasmGraphics_DeviceSetScissorState"] = this.wasmGraphics_DeviceSetScissorState;
-        this.env["wasmGraphics_GLGenFrameBuffer"] = this.wasmGraphics_GLGenFrameBuffer;
-        this.env["wasmGraphics_DestroyFrameBuffer"] = this.wasmGraphics_DestroyFrameBuffer;
-        this.env["wasmGraphics_GLGenBuffer"] = this.wasmGraphics_GLGenBuffer;
-        this.env["wasmGraphics_GLDestroyBuffer"] = this.wasmGraphics_GLDestroyBuffer;
-        this.env["wasmGraphics_GLCreateVAO"] = this.wasmGraphics_GLCreateVAO;
-        this.env["wasmGraphics_GLDestroyVAO"] = this.wasmGraphics_GLDestroyVAO;
-        this.env["wasmGraphics_CreateTexture"] = this.wasmGraphics_CreateTexture;
-        this.env["wasmGraphics_GLDestroyTexture"] = this.wasmGraphics_GLDestroyTexture;
-        this.env["wasmGraphics_GLDestroyShader"] = this.wasmGraphics_GLDestroyShader;
-        this.env["wasmGraphics_DeviceSetRenderTarget"] = this.wasmGraphics_DeviceSetRenderTarget;
-        this.env["wasmGraphics_DeviceDraw"] = this.wasmGraphics_DeviceDraw;
-        this.env["wasmGraphics_VertexLayoutSet"] = this.wasmGraphics_VertexLayoutSet;
-        this.env["wasmGraphics_VertexLayoutSetIndexBuffer"] = this.wasmGraphics_VertexLayoutSetIndexBuffer;
-        this.env["wasmGraphics_FramebufferAttachColor"] = this.wasmGraphics_FramebufferAttachColor;
-        this.env["wasmGraphics_FrameBufferAttachDepth"] = this.wasmGraphics_FrameBufferAttachDepth;
-        this.env["wasmGraphics_FrameBufferIsValid"] = this.wasmGraphics_FrameBufferIsValid;
-        this.env["wasmGraphics_FrameBufferResolveTo"] = this.wasmGraphics_FrameBufferResolveTo;
-        this.env["wasmGraphics_BufferReset"] = this.wasmGraphics_BufferReset;
-        this.env["wasmGraphics_BufferSet"] = this.wasmGraphics_BufferSet;
-        this.env["wasmGraphics_ShaderGetUniform"] = this.wasmGraphics_ShaderGetUniform;
-        this.env["wasmGraphics_ShaderGetAttribute"] = this.wasmGraphics_ShaderGetAttribute;
-        this.env["wasmGraphics_ResetVertexLayout"] = this.wasmGraphics_ResetVertexLayout;
-        this.env["wasmGraphics_BindVAO"] = this.wasmGraphics_BindVAO;
-        this.env["wasmGraphics_DeviceBindTexture"] = this.wasmGraphics_DeviceBindTexture;
-        this.env["wasmGraphics_DeviceSetUniform"] = this.wasmGraphics_DeviceSetUniform;
-        this.env["wasmGraphics_DeviceBindShader"] = this.wasmGraphics_DeviceBindShader;
-        this.env["wasmGraphics_SetDefaultGLState"] = this.wasmGraphics_SetDefaultGLState;
-        this.env["wasmGraphics_GetScissorAndViewport"] = this.wasmGraphics_GetScissorAndViewport;
-        this.env["wasmGraphics_CompileShader"] = this.wasmGraphics_CompileShader;
+        this.env.wasmGraphics_Log = this.wasmGraphics_Log;
+        this.env.wasmGraphics_SetTexturePCM = this.wasmGraphics_SetTexturePCM;
+        this.env.wasmGraphics_TextureSetData = this.wasmGraphics_TextureSetData;
+        this.env.wasmGraphics_TextureSetCubemap = this.wasmGraphics_TextureSetCubemap;
+        this.env.wasmGraphics_DeviceSetFaceVisibility = this.wasmGraphics_DeviceSetFaceVisibility;
+        this.env.wasmGraphics_DeviceClearRGBAD = this.wasmGraphics_DeviceClearRGBAD;
+        this.env.wasmGraphics_SetDepthState = this.wasmGraphics_SetDepthState;
+        this.env.wasmGraphics_DeviceClearBufferBits = this.wasmGraphics_DeviceClearBufferBits;
+        this.env.wasmGraphics_DeviceWriteMask = this.wasmGraphics_DeviceWriteMask;
+        this.env.wasmGraphics_SetGLBlendFuncEnabled = this.wasmGraphics_SetGLBlendFuncEnabled;
+        this.env.wasmGraphics_UpdateGLBlendColor = this.wasmGraphics_UpdateGLBlendColor;
+        this.env.wasmGraphics_ChangeGLBlendFuncSame = this.wasmGraphics_ChangeGLBlendFuncSame;
+        this.env.wasmGraphics_ChangeGLBlendFuncSeperate = this.wasmGraphics_ChangeGLBlendFuncSeperate;
+        this.env.wasmGraphics_ChangeGLBlendEquation = this.wasmGraphics_ChangeGLBlendEquation;
+        this.env.wasmGraphics_ChangeGLBlendEquationSeparate = this.wasmGraphics_ChangeGLBlendEquationSeparate;
+        this.env.wasmGraphics_DeviceClearColor = this.wasmGraphics_DeviceClearColor;
+        this.env.wasmGraphics_DeviceClearDepth = this.wasmGraphics_DeviceClearDepth;
+        this.env.wasmGraphics_SetGLViewport = this.wasmGraphics_SetGLViewport;
+        this.env.wasmGraphics_DeviceSetScissorState = this.wasmGraphics_DeviceSetScissorState;
+        this.env.wasmGraphics_GLGenFrameBuffer = this.wasmGraphics_GLGenFrameBuffer;
+        this.env.wasmGraphics_DestroyFrameBuffer = this.wasmGraphics_DestroyFrameBuffer;
+        this.env.wasmGraphics_GLGenBuffer = this.wasmGraphics_GLGenBuffer;
+        this.env.wasmGraphics_GLDestroyBuffer = this.wasmGraphics_GLDestroyBuffer;
+        this.env.wasmGraphics_GLCreateVAO = this.wasmGraphics_GLCreateVAO;
+        this.env.wasmGraphics_GLDestroyVAO = this.wasmGraphics_GLDestroyVAO;
+        this.env.wasmGraphics_CreateTexture = this.wasmGraphics_CreateTexture;
+        this.env.wasmGraphics_GLDestroyTexture = this.wasmGraphics_GLDestroyTexture;
+        this.env.wasmGraphics_GLDestroyShader = this.wasmGraphics_GLDestroyShader;
+        this.env.wasmGraphics_DeviceSetRenderTarget = this.wasmGraphics_DeviceSetRenderTarget;
+        this.env.wasmGraphics_DeviceDraw = this.wasmGraphics_DeviceDraw;
+        this.env.wasmGraphics_VertexLayoutSet = this.wasmGraphics_VertexLayoutSet;
+        this.env.wasmGraphics_VertexLayoutSetIndexBuffer = this.wasmGraphics_VertexLayoutSetIndexBuffer;
+        this.env.wasmGraphics_FramebufferAttachColor = this.wasmGraphics_FramebufferAttachColor;
+        this.env.wasmGraphics_FrameBufferAttachDepth = this.wasmGraphics_FrameBufferAttachDepth;
+        this.env.wasmGraphics_FrameBufferIsValid = this.wasmGraphics_FrameBufferIsValid;
+        this.env.wasmGraphics_FrameBufferResolveTo = this.wasmGraphics_FrameBufferResolveTo;
+        this.env.wasmGraphics_BufferReset = this.wasmGraphics_BufferReset;
+        this.env.wasmGraphics_BufferSet = this.wasmGraphics_BufferSet;
+        this.env.wasmGraphics_ShaderGetUniform = this.wasmGraphics_ShaderGetUniform;
+        this.env.wasmGraphics_ShaderGetAttribute = this.wasmGraphics_ShaderGetAttribute;
+        this.env.wasmGraphics_ResetVertexLayout = this.wasmGraphics_ResetVertexLayout;
+        this.env.wasmGraphics_BindVAO = this.wasmGraphics_BindVAO;
+        this.env.wasmGraphics_DeviceBindTexture = this.wasmGraphics_DeviceBindTexture;
+        this.env.wasmGraphics_DeviceSetUniform = this.wasmGraphics_DeviceSetUniform;
+        this.env.wasmGraphics_DeviceBindShader = this.wasmGraphics_DeviceBindShader;
+        this.env.wasmGraphics_SetDefaultGLState = this.wasmGraphics_SetDefaultGLState;
+        this.env.wasmGraphics_GetScissorAndViewport = this.wasmGraphics_GetScissorAndViewport;
+        this.env.wasmGraphics_CompileShader = this.wasmGraphics_CompileShader;
     }
 
     InitializeWebAssemblyDevice(allocPtr, releasePtr, wasmExports, wasmMemory) {
@@ -103,6 +94,7 @@ class GraphicsManager {
         this.exports.wasm_Graphics_Shutdown(this.devicePtr);
     }
 
+    // Internal functions
     wasmGraphics_Log(ptr_loc, int_locLen, ptr_msg, int_msgLen) {
         if (this.log !== undefined && this.log !== null) {
             const str_message = this.decoder.decode(new Uint8Array(this.memory.buffer, ptr_msg, int_msgLen));
@@ -166,6 +158,16 @@ class GraphicsManager {
         }
         this.gl.deleteVertexArray(this.vaos[int_vaoID]);
         this.vaos[int_vaoID] = null;
+    }
+
+    wasmGraphics_ResetVertexLayout(int_id) {
+        this.wasmGraphics_GLDestroyVAO(int_id);
+        return this.wasmGraphics_GLCreateVAO();
+    }
+
+    wasmGraphics_BufferReset(int_bufferId) {
+        this.wasmGraphics_GLDestroyBuffer(this.int_bufferId);
+	    return this.wasmGraphics_GLGenBuffer();
     }
 
     wasmGraphics_GLGenFrameBuffer() {
@@ -238,7 +240,7 @@ class GraphicsManager {
         this.gl.bindTexture(this.gl.TEXTURE_2D, texture); 
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataFormatType, this.memory_u8, ptr_data);
         if (bool_genMipMaps) {
-            this.gl.generateMipmap(gl.TEXTURE_2D);
+            this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
         this.gl.bindTexture(this.gl.TEXTURE_2D, null);
     }
@@ -256,7 +258,7 @@ class GraphicsManager {
         this.gl.texImage2D(this.gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, this.memory_u8, ptr_frontData);
     
         if (bool_genMipMaps) {
-            this.gl.generateMipmap(gl.TEXTURE_2D);
+            this.gl.generateMipmap(this.gl.TEXTURE_2D);
         }
         this.gl.bindTexture(this.gl.TEXTURE_2D, null);
     }
@@ -271,7 +273,7 @@ class GraphicsManager {
         }
 
         if (bool_changeFace) {
-            this.gl.frontFace(int_faceWind)
+            this.gl.frontFace(int_faceWind);
         }
     }
 
@@ -375,7 +377,8 @@ class GraphicsManager {
 
     wasmGraphics_DeviceSetRenderTarget(int_frameBufferId, int_numAttachments) {
         if (int_frameBufferId != 0) {
-            this.gl.bindFramebuffer(GL_FRAMEBUFFER, int_frameBufferId);
+            let fbo = this.fbos[int_frameBufferId];
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
 
             if (int_numAttachments == 0) {
                 this.gl.drawBuffer(this.gl.NONE);
@@ -409,7 +412,8 @@ class GraphicsManager {
     }
 
     wasmGraphics_DeviceDraw(int_glVao, bool_indexed, int_instanceCount, int_drawMode, int_startIndex, int_indexCount, int_bufferType) {
-        this.gl.bindVertexArray(int_glVao);
+        let vao = this.vaos[int_glVao];
+        this.gl.bindVertexArray(vao);
         if (bool_indexed) {
             if (int_instanceCount <= 1) {
                 this.gl.drawElements(int_drawMode, int_indexCount, int_bufferType, int_startIndex);
@@ -429,8 +433,11 @@ class GraphicsManager {
     }
 
     wasmGraphics_VertexLayoutSet(int_glVaoId, int_glBufferId, int_slotId, int_numComponents, int_type, int_stride, int_offset, int_divisor) {
-        this.gl.bindVertexArray(int_glVaoId);
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, int_glBufferId);
+        let vao = this.vaos[int_glVaoId];
+        let buffer = this.vbos[int_glBufferId];
+
+        this.gl.bindVertexArray(vao);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
         this.gl.vertexAttribPointer(int_slotId, int_numComponents, int_type, this.gl.FALSE, int_stride, int_offset);
         this.gl.enableVertexAttribArray(int_slotId);
         this.gl.vertexAttribDivisor(int_slotId, int_divisor);
@@ -438,45 +445,58 @@ class GraphicsManager {
     }
 
     wasmGraphics_VertexLayoutSetIndexBuffer(int_glVaoId, int_glElementArrayBufferId) {
-        this.gl.bindVertexArray(int_glVaoId);
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, int_glElementArrayBufferId);
+        let vao = this.vaos[int_glVaoId];
+        let buffer = this.vbos[int_glElementArrayBufferId];
+        
+        this.gl.bindVertexArray(vao);
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffer);
         this.gl.bindVertexArray(null);
     }
 
     wasmGraphics_FramebufferAttachColor(int_attachTarget, int_frameBufferId, int_textureId, int_attachmentIndex) {
-	    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, int_frameBufferId);
-	    this.gl.bindTexture(int_attachTarget, int_textureId);
+        let fbo = this.fbos[int_frameBufferId];
+        let texture = this.textures[int_textureId];
+
+	    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
+	    this.gl.bindTexture(int_attachTarget, texture);
 		this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-	    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0 + int_attachmentIndex, int_attachTarget, int_textureId, 0);
+	    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0 + int_attachmentIndex, int_attachTarget, texture, 0);
 	    this.gl.bindTexture(int_attachTarget, null);
 	    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     wasmGraphics_FrameBufferAttachDepth(int_attachTarget, int_frameBufferId, int_textureId, bool_pcm) {
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, int_frameBufferId);
-	    this.gl.bindTexture(int_attachTarget, int_textureId);
+        let fbo = this.fbos[int_frameBufferId];
+        let texture = this.textures[int_textureId];
+
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
+	    this.gl.bindTexture(int_attachTarget, texture);
         if (bool_pcm) {
             this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_COMPARE_MODE, this.gl.COMPARE_REF_TO_TEXTURE);
             this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_COMPARE_FUNC, this.gl.LEQUAL);
         }
         this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
 		this.gl.texParameteri(int_attachTarget, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
-	    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, int_attachTarget, int_textureId, 0);
+	    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, int_attachTarget, texture, 0);
         this.gl.bindTexture(int_attachTarget, null);
 	    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
     wasmGraphics_FrameBufferIsValid(int_frameBufferId) {
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, int_frameBufferId);
+        let fbo = this.fbos[int_frameBufferId];
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
         let result = this.gl.checkFramebufferStatus(this.gl.FRAMEBUFFER) == this.gl.FRAMEBUFFER_COMPLETE;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
         return result;
     }
 
     wasmGraphics_FrameBufferResolveTo(int_readBuffer, int_drawBuffer, int_x0, int_y0, int_x1, int_y1, int_x2, int_y2, int_x3, int_y3, bool_colorBit, bool_depthBit, int_filter) {
-        this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, int_readBuffer);
-        this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, int_drawBuffer);
+        let read_fbo = this.fbos[int_readBuffer];
+        let draw_fbo = this.fbos[int_drawBuffer];
+       
+        this.gl.bindFramebuffer(this.gl.READ_FRAMEBUFFER, read_fbo);
+        this.gl.bindFramebuffer(this.gl.DRAW_FRAMEBUFFER, draw_fbo);
         let mask = 0;
         if (bool_depthBit) {
 		    mask |= this.gl.DEPTH_BUFFER_BIT;
@@ -488,20 +508,17 @@ class GraphicsManager {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
-    wasmGraphics_BufferReset(int_bufferId) {
-        this.wasmGraphics_GLDestroyBuffer(this.int_bufferId);
-	    return this.wasmGraphics_GLGenBuffer();
-    }
-
     wasmGraphics_BufferSet(bool_indexBuffer, int_bufferId, int_arraySizeInByfes, ptr_inputArray, bool_isStatic) {
+        let buffer = this.vbos[int_bufferId];
+
         if (bool_indexBuffer) {
-            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, int_bufferId);
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffer);
             this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, this.memory_u8, this.gl.STATIC_DRAW, ptr_inputArray, int_arraySizeInByfes);
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, null);
         }
         else {
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, int_bufferId);
-            this.gl.bufferData(this.gl.ARRAY_BUFFER, this.memory_u8, _static? this.gl.STATIC_DRAW : this.gl.DYNAMIC_DRAW, ptr_inputArray, int_arraySizeInByfes);
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, this.memory_u8, bool_isStatic? this.gl.STATIC_DRAW : this.gl.DYNAMIC_DRAW, ptr_inputArray, int_arraySizeInByfes);
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
         }
     }
@@ -516,19 +533,16 @@ class GraphicsManager {
         return this.gl.getAttribLocation(int_program, this.decoder.decode(array));
     }
 
-    wasmGraphics_ResetVertexLayout(int_id) {
-        this.gl.BindVertexArray(null);
-        this.gl.deleteVertexArrays(int_id);
-        return this.gl.createVertexArray();
-    }
-
     wasmGraphics_BindVAO(int_vaoId) {
-        this.gl.bindVertexArray(int_vaoId);
+        let vao = this.vaos[int_vaoId];
+        this.gl.bindVertexArray(vao);
     }
 
     wasmGraphics_DeviceBindTexture(int_textureUnit, int_textureUnitIndex, int_textureTarget, int_textureId, int_uniformSlot, int_minFilter, int_magFilter, int_wrapS, int_wrapT, int_wrapR, bool_updateSampler) {
-	    this.gl.activeTexture(int_textureUnit);
-        this.gl.bindTexture(int_textureTarget, int_textureId);
+	    let texture = this.textures[int_textureId];
+
+        this.gl.activeTexture(int_textureUnit);
+        this.gl.bindTexture(int_textureTarget, texture);
 
         if (bool_updateSampler) {
             this.gl.texParameteri(int_textureTarget, this.gl.TEXTURE_MIN_FILTER, int_minFilter);
@@ -543,49 +557,51 @@ class GraphicsManager {
 
     wasmGraphics_DeviceSetUniform(int_type, int_slotId, int_count, ptr_data) {
         if (int_type == 0/* UniformType::Int1 */) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(i32));
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/);
             this.gl.Uniform1iv(int_slotId, int_count, data);
         }
         else if (int_type == 1/*UniformType::Int2*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(i32) * 2);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 2);
             this.gl.uniform2iv(int_slotId, int_count, data);
         }
         else if (int_type == 2/*UniformType::Int3*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(i32) * 3);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 3);
             this.gl.uniform3iv(int_slotId, int_count, data);
         }
         else if (int_type == 3/*UniformType::Int4*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(i32) * 4);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 4);
             this.gl.uniform4iv(int_slotId, int_count, data);
         }
         else if (int_type == 4/*UniformType::Float1*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32));
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/);
             this.gl.uniform1fv(int_slotId, int_count, data);
         }
         else if (int_type == 5/*UniformType::Float2*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32) * 2);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 2);
             this.gl.uniform2fv(int_slotId, int_count, data);
         }
         else if (int_type == 6/*UniformType::Float3*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32) * 3);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 3);
             this.gl.uniform3fv(int_slotId, int_count, data);
         }
         else if (int_type == 7/*UniformType::Float4*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32) * 4);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 4);
             this.gl.uniform4fv(int_slotId, int_count, data);
         }
         else if (int_type == 8/*UniformType::Float9*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32) * 9);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 9);
             this.gl.uniformMatrix3fv(int_slotId, int_count, this.gl.FALSE, data);
         }
         else if (int_type == 9/*UniformType::Float16*/) {
-            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * sizeof(f32) * 16);
+            let data = new Uint8Array(this.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 16);
             this.gl.uniformMatrix4fv(int_slotId, int_count, this.gl.FALSE, data);
         }
     }
 
     wasmGraphics_DeviceBindShader(int_programId, int_boundTextures) {
-		this.gl.useProgram(int_programId);
+        let shader = this.shaders[int_programId];
+
+		this.gl.useProgram(shader);
         for (let i = 0; i < 32; ++i) {
             let set = int_boundTextures & (1 << i);
             if (set) {
@@ -616,8 +632,8 @@ class GraphicsManager {
         let scissorRect = this.gl.getParameter(this.gl.SCISSOR_BOX);
         let viewportRect = this.gl.getParameter(this.gl.VIEWPORT);
 
-        let targetScissor = new Uint32Array(this.memory.buffer, ptr_scissorPtr, 4 * 4); ;
-        let targetView =new Uint32Array(this.memory.buffer, ptr_viewPtr, 4 * 4);
+        let targetScissor = new Uint32Array(this.memory.buffer, ptr_scissorPtr, 4);
+        let targetView =new Uint32Array(this.memory.buffer, ptr_viewPtr, 4);
 
         targetScissor[0] = scissorRect[0];
         targetScissor[1] = scissorRect[1];
@@ -637,9 +653,9 @@ class GraphicsManager {
         let vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
         this.gl.shaderSource(vertexShader, vertexShaderStr);
         this.gl.compileShader(vertexShader);
-        let success = this.gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+        let success = this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS);
         if (!success) {
-            let message = gl.getShaderInfoLog(vertexShader);
+            let message = this.gl.getShaderInfoLog(vertexShader);
             this.log("Error compiling vertex shader: " + message);
             return 0;
         }
@@ -647,41 +663,51 @@ class GraphicsManager {
         let fragmentShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
         this.gl.shaderSource(fragmentShader, fragmentShaderStr);
         this.gl.compileShader(fragmentShader);
-        success = this.gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+        success = this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS);
         if (!success) {
-            let message = gl.getShaderInfoLog("Error compiling fragment shader: " + fragmentShader);
-            this.log(message);
+            let message = this.gl.getShaderInfoLog(fragmentShader);
+            this.log("Error compiling fragment shader: " + message);
             return 0;
         }
 
-        u32 shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        let shaderProgram = this.gl.createProgram();
+        this.gl.attachShader(shaderProgram, vertexShader);
+        this.gl.attachShader(shaderProgram, fragmentShader);
+        this.gl.linkProgram(shaderProgram);
+        success = this.gl.getProgramParameter(this.gl.LINK_STATUS);
         if (!success) {
-            result.success = false;
-#if _DEBUG
-            char infoLog[512];
-            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-            glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-            GraphicsAssert(false, infoLog);
-#endif
-        }
-        else {
-            result.program = shaderProgram;
+            let message = this.gl.getProgramInfoLog(shaderProgram);
+            this.log("Error linking shader: " + message);
+            return 0;
         }
 
         // Delete shaders
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+        this.gl.deleteShader(vertexShader);
+        this.gl.deleteShader(fragmentShader);
         
-        // TODO:
-        // Now shove that shader into an array
-        // and return its index
+        // Now put that shader into an array and return its index
+        let insertIndex = -1;
+        for (let i = 1; i < this.shaders.length; ++i) {
+            if (this.shaders[i] == null) {
+                this.shaders[i] = shaderProgram;
+                insertIndex = i;
+                break;
+            }
+        }
+
+        if (insertIndex == -1) {
+            insertIndex = this.shaders.length;
+            this.shaders.push(shaderProgram);
+        }
+
+        return insertIndex;
     }
 
     wasmGraphics_GLDestroyShader(int_shaderId) {
-        // TODO
+        if (int_shaderId == 0) {
+            this.log("Trying to delete invalid shader: 0");
+        }
+        this.gl.deleteProgram(this.shaders[int_shaderId]);
+        this.shaders[int_shaderId] = null;
     }
-};
+}
