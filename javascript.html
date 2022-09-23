@@ -1,0 +1,589 @@
+<!doctype html>  
+<html lang="en">  
+    <head>  
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+        <meta charset="utf-8">  
+        <title>Javascript Graphics Sample</title>  
+        <meta name="description" content="Graphics Sample">  
+        <!--
+        <script type="text/javascript" src="https://spectorcdn.babylonjs.com/spector.bundle.js"></script>
+-->
+        <script type="text/javascript" src="Graphics.js"></script>
+
+        <script type="text/javascript">
+            // Global graphics device. 
+            var gfx = null; 
+
+            // Scene globals
+            var cameraRadius = null; 
+            var cameraHeight = null; 
+            var cameraTarget = null; 
+            var cameraTime = null; 
+            var lightTime = null; 
+            var lightDir = null; 
+
+            // Mesh globals
+            var skull_mesh = null; 
+            var skull_vShader = null; 
+            var skull_fShader = null; 
+            var skull_albedo = null; 
+            var skull_normal = null; 
+
+            // Display globals
+            var skull_buffer = null;
+            var skull_shader = null;
+            var skull_colorTex = null;
+            var skull_normalTex = null;
+            
+            var skullUniformModel = null;
+            var skullUniformView = null;
+            var skullUniformprojection = null;
+            var skullAttribPos = null;
+            var skullAttribTex = null;
+            var skullUniformAlbedoSpec = null;
+
+            // Debug globals
+            let debug_vShader = null;
+            let debug_fShader = null;
+            let debug_shader = null;
+            let debugMesh = null;
+            let debugAttribPos = null;
+            let debugAttribTex = null;
+            let debugUniformModel = null;
+            let debugUniformView = null;
+            var debugUniformAlbedoSpec = null;
+
+            // GBuffer stuff
+            let gbuffer_shader = null;
+            let gbuffer_vshader = null;
+            let gbuffer_fshader = null;
+            let gBufferUniformAlbedoSpec = null;
+            let gBufferUniformNormal = null;
+            let gBufferUniformModel = null;
+            let gBufferUniformView = null;
+            let gBufferUniformProjection = null;
+            let gBufferAttribPosition = null;
+            let gBufferAttribNormal = null;
+            let gBufferAttributeTexCoord = null;
+            let gBuffer = null;
+            let lightShader = null;
+            let lightvShader = null;
+            let lightfShader = null;
+            let gBufferPosition = null;
+            let gBufferNormal = null;
+            let gBufferColorSpec = null;
+            let gBufferDepth = null;
+
+            let lightAttribPos = null;
+            let lightAttribUv = null;
+            let lightSampler2DTexPos = null;
+            let lightSampler2DTexNorm = null;
+            let lightSampler2DTexAlbedoSpec = null;
+            let lightUniformLightPositions = null;
+            let lightUniformLightColors = null;
+            let lightUniformLightLinears = null;
+            let lightUniformLightQuadratics = null;
+            let lightUniformViewPos = null;
+            let lightQuad = null;
+
+            var lightPositions = null;
+            var lightColors = null;
+
+            var f32One = null;
+            var f32Two = null;
+
+            let NR_LIGHTS = 36;
+
+            function DrawSkull(posIndex, nrmIndex, texIndex, albedoSpecIndex, normalIndex) {
+                let stride = 4 * (3 + 3 + 2); // sizeof(float) * (vec3 + vec3 + vec2)
+                let vType = Graphics.BufferType.Float32;
+
+                let posView = new Graphics.BufferView(3, stride, vType, 0);
+                let nrmView = new Graphics.BufferView(3, stride, vType, 4 * 3);
+                let texView = new Graphics.BufferView(2, stride, vType, 4 * 6);
+
+                let sampler = new Graphics.Sampler();
+
+                if (posIndex !== undefined && posIndex != null && posIndex.valid) {
+                    gfx.BindBuffer(posIndex, skull_buffer, posView); // TODO: Make a generic bind function after all
+                }
+
+                if (nrmIndex !== undefined && nrmIndex != null && nrmIndex.valid) {
+                    gfx.BindBuffer(nrmIndex, skull_buffer, nrmView);
+                }
+
+                if (texIndex !== undefined && texIndex != null && texIndex.valid) {
+                    gfx.BindBuffer(texIndex, skull_buffer, texView);
+                }
+
+                if (albedoSpecIndex !== undefined && albedoSpecIndex != null && albedoSpecIndex.valid) {
+                    gfx.BindTexture(albedoSpecIndex, skull_colorTex, sampler);
+                }
+
+                if (normalIndex !== undefined && normalIndex != null && normalIndex.valid) {
+                    gfx.BindTexture(normalIndex, skull_normalTex, sampler);
+                }
+
+                gfx.Draw(Graphics.DrawMode.Triangles, 0, skull_buffer.GetUserData());
+            }
+
+            function v3Normalized(v) {
+                let dot = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+                let invLen = 1.0 / Math.sqrt(dot);
+
+                return [
+                    v[0] * invLen,
+                    v[1] * invLen,
+                    v[2] * invLen
+                ];
+            }
+
+            function v3Cross(a, b) {
+                return [
+                    a[1] * b[2] - a[2] * b[1] ,
+                    a[2] * b[0] - a[0] * b[2] ,
+                    a[0] * b[1] - a[1] * b[0] ,
+                ];
+            }
+
+            function v3Dot(a, b) {
+                return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            }
+
+            function LookAt(vec3Pos, vec3Target, vec3Up) {
+                let f = v3Normalized([
+                    vec3Target[0] - vec3Pos[0],
+                    vec3Target[1] - vec3Pos[1],
+                    vec3Target[2] - vec3Pos[2]]
+                );
+                
+                f[0] *= -1.0;
+                f[1] *= -1.0;
+                f[2] *= -1.0;
+                
+                let r = v3Cross(vec3Up, f); // Right handed
+                r = v3Normalized(r);
+                let u = v3Normalized(v3Cross(f, r)); // Right handed
+
+                let t = [ // vec3
+                    -1.0 * v3Dot(r, vec3Pos),
+                    -1.0 * v3Dot(u, vec3Pos),
+                    -1.0 * v3Dot(f, vec3Pos)
+                ];
+
+                return new Float32Array([
+                    // Transpose upper 3x3 matrix to invert it
+                    r[0], u[0], f[0], 0,
+                    r[1], u[1], f[1], 0,
+                    r[2], u[2], f[2], 0,
+                    t[0], t[1], t[2], 1
+                ]);
+            }
+
+            function Perspective(fov, aspect, znear, zfar) {
+                let ymax = znear * Math.tan(fov * 3.14159265359 / 360.0);
+                let xmax = ymax * aspect;
+
+                let l = -xmax;
+                let r = xmax;
+                let b = -ymax;
+                let t = ymax;
+                let n = znear;
+                let f = zfar;
+
+                return new Float32Array([
+                    (2.0 * n) / (r - l), 0, 0, 0,
+                    0, (2.0 * n) / (t - b), 0, 0,
+                    (r + l) / (r - l), (t + b) / (t - b), (-(f + n)) / (f - n), -1,
+                    0, 0, (-2 * f * n) / (f - n), 0
+                ]);
+            }
+            
+            function loop() {
+                //gfx.Clear(0.4, 0.5, 0.6, 1.0);
+
+                // Wait for data to load
+                if (skull_mesh == null || skull_mesh.pos == null || 
+                    skull_vShader == null || skull_vShader.text == null || 
+                    skull_fShader == null || skull_fShader.text == null ||
+                    skull_albedo == null || skull_albedo.data == null ||
+                    skull_normal == null || skull_normal.data == null ||
+                    debug_vShader == null || debug_vShader.text == null ||
+                    debug_fShader == null || debug_fShader.text == null ||
+                    lightvShader == null || lightvShader.text == null ||
+                    lightfShader == null || lightfShader.text == null ||
+                    gbuffer_fshader == null || gbuffer_fshader.text == null ||
+                    gbuffer_vshader == null || gbuffer_vshader == null
+                ) {
+                    return; // Waiting for resources to load still
+                }
+
+                // Shader trap
+                if (skull_shader === undefined) {
+                    console.log("no shader");
+                    return;
+                }
+                
+                // Process loaded data
+                if (skull_buffer == null || skull_shader == null || skull_colorTex == null || skull_normalTex == null) {
+                    let interleaved_array = [];
+                    let pos = skull_mesh.pos;
+                    let nrm = skull_mesh.nrm;
+                    let tex = skull_mesh.tex;
+
+                    let iter = 0;
+                    for (let i = 0; i < skull_mesh.numPos; ++i) {
+                        interleaved_array[iter++] = pos[i * 3 + 0];
+                        interleaved_array[iter++] = pos[i * 3 + 1];
+                        interleaved_array[iter++] = pos[i * 3 + 2];
+
+                        interleaved_array[iter++] = nrm[i * 3 + 0];
+                        interleaved_array[iter++] = nrm[i * 3 + 1];
+                        interleaved_array[iter++] = nrm[i * 3 + 2];
+
+                        interleaved_array[iter++] = tex[i * 2 + 0];
+                        interleaved_array[iter++] = tex[i * 2 + 1];
+                    }
+
+                    let quadVerts = [
+                        // positions     // texture Coords
+                        -1.0,  1.0, 0.0, 0.0, 1.0,
+                        -1.0, -1.0, 0.0, 0.0, 0.0,
+                         1.0,  1.0, 0.0, 1.0, 1.0,
+                         1.0, -1.0, 0.0, 1.0, 0.0,
+                    ];
+
+                    debugMesh = gfx.CreateBuffer(new Float32Array(quadVerts), 20 * 4);
+                    lightQuad = gfx.CreateBuffer(new Float32Array(quadVerts), 20 * 4);
+
+
+                    let r = 17; // Init lights
+                    lightPositions = [];
+                    lightColors = [];
+                    f32One = [];
+                    f32Two = [];
+                    let random = [ 0.3656,0.5975,0.2565,0.3479,0.5476,0.3928,0.3415,0.0206,0.5463,0.5178,0.3933,0.5041,0.3936,0.6914,0.1432,0.9345,0.4658,0.3882,0.1937,0.8578,0.8132,0.4431,0.3995,0.3597,0.5603,0.4911,0.2347,0.2945,0.3984,0.2634,0.6267,0.7258,0.1814,0.4948,0.7753,0.9251,0.9465,0.6035,0.3846,0.1093,0.3142,0.3638,0.641,0.5442,0.4255,0.8379,0.9256,0.4742,0.582,0.0497,0.5018,0.3946,0.6035,0.3299,0.6916,0.0434,0.3801,0.1466,0.5641,0.4768,0.8104,0.3498,0.5298,0.6186,0.8115,0.5604,0.3641,0.563,0.6914,0.69,0.6966,0.7567,0.7046,0.7525,0.0391,0.5287,0.5703,0.7917,0.5608,0.2734,0.4075,0.1968,0.5193,0.4479,0.7639,0.3171,0.6007,0.3993,0.4817,0.085,0.7841,0.6112,0.9593,0.7706,0.7092,0.4832,0.5839,0.0586,0.8798,0.6776,0.1723,0.7488,0.1125,0.5674,0.9469,0.381,0.3251,0.8302,0.7036,0.3844,0.1897,0.1555,0.8685,0.4488,0.2031,0.2371,0.5348,0.2711,0.196,0.7856,0.028,0.4563,0.3901,0.2574,0.6517,0.0475,0.9826,0.6943,0.3909,0.0292,0.8991,0.9083,0.6209,0.7381,0.9288,0.1965,0.1603,0.1763,0.4042,0.7352,0.5881,0.2164,0.6734,0.0666,0.3236,0.3242,0.604,0.356,0.7874,0.1962,0.4063,0.8309,0.844,0.2406,0.3622,0.4559,0.6488,0.4288,0.4571,0.1326,0.2152,0.1106,0.7596,0.2242,0.4044,0.3271,0.2481,0.4833,0.3934,0.7591,0.9811,0.6693,0.5843,0.4716,0.3495,0.4749,0.3009,0.4572,0.88,0.7667,0.4829,0.4215,0.1258,0.5959,0.7244,0.5981,0.6163,0.3598,0.5784,0.5132,0.3999,0.4614,0.7948,0.7211,0.7975,0.4933,0.7678,0.9405,0.4102,0.6404,0.0975,0.2982,0.5555,0.527,0.1202,0.3418,0.6476,0.4751,0.1752,0.493,0.8084,0.4753,0.4899,0.5522,0.0961,0.1637,0.7502,0.3266,0.8412,0.6116,0.1583,0.9776,0.3522,0.8333,0.2751,0.296,0.3329,0.6459,0.6083,0.2274,0.55,0.2861,0.2143,0.5151,0.6609,0.5558,0.4814,0.7225,0.6892,0.8186,0.4698,0.7448,0.4534,0.5496,0.4,0.3845,0.3266,0.6809,0.447,0.8964,0.319,0.3663,0.3682,0.8342,0.4573,0.7355 ];
+                    for (let i = 0; i < NR_LIGHTS; i++) {
+                        // calculate slightly random offsets
+                        r += 1; r %= 256;
+                        lightPositions.push(random[r] * 6.0 - 3.0);// *12.0 - 6.0;
+                        r += 1; r %= 256;
+                        let xPos1 = random[r] * 6.0 - 3.0;// *12.0 - 6.0;
+                        r += 1; r %= 256;
+                        lightPositions.push(random[r] * 6.0 - 4.0);// * 12.0 - 8.0;
+                        r += 1; r %= 256;
+                        let yPos1 = random[r] * 6.0 - 4.0;// * 12.0 - 8.0;
+                        r += 1; r %= 256;
+                        lightPositions.push(random[r] * 6.0 - 3.0);//* 12.0 - 6.0;
+                        r += 1; r %= 256;
+                        let zPos1 = random[r] * 6.0 - 3.0;//* 12.0 - 6.0;
+                        // also calculate random color
+                        r += 1; r %= 256;
+                        lightColors.push(random[r] * 0.5 + 0.5);
+                        r += 1; r %= 256;
+                        lightColors.push(random[r] * 0.5 + 0.5);
+                        r += 1; r %= 256;
+                        lightColors.push(random[r] * 0.5 + 0.5);
+
+                        f32One.push(0.7);
+                        f32Two.push(1.8);
+                    }
+
+
+                    skull_buffer = gfx.CreateBuffer(new Float32Array(interleaved_array), skull_mesh.numPos * 3 * 4 + skull_mesh.numNrm * 3 * 4 + skull_mesh.numTex * 2 * 4);
+                    skull_buffer.SetUserData(skull_mesh.numPos);
+                    skull_shader = gfx.CreateShader(skull_vShader.text, skull_fShader.text);
+                    debug_shader = gfx.CreateShader(debug_vShader.text, debug_fShader.text);
+                    gbuffer_shader = gfx.CreateShader(gbuffer_vshader.text, gbuffer_fshader.text);
+                    lightShader = gfx.CreateShader(lightvShader.text, lightfShader.text)
+                    skull_colorTex = gfx.CreateTexture(skull_albedo.data, skull_albedo.width, skull_albedo.height, Graphics.TextureFormat.RGBA);
+                    skull_normalTex = gfx.CreateTexture(skull_normal.data, skull_normal.width, skull_normal.height, Graphics.TextureFormat.RGBA);
+                    gBuffer = gfx.CreateFrameBuffer(800, 600);
+
+                    gBufferPosition = gfx.CreateTexture(null, 800, 600, Graphics.TextureFormat.RGBA, false);
+                    gBufferNormal = gfx.CreateTexture(null, 800, 600, Graphics.TextureFormat.RGBA, false);
+                    gBufferColorSpec = gfx.CreateTexture(null, 800, 600, Graphics.TextureFormat.RGBA, false);
+
+                    gBuffer.AttachColor(gBufferPosition, 0);
+                    gBuffer.AttachColor(gBufferNormal, 1);
+                    gBuffer.AttachColor(gBufferColorSpec, 2);
+
+                    lightAttribPos = lightShader.GetAttribute("aPos");
+                    lightAttribUv = lightShader.GetAttribute("aTexCoords");
+                    lightSampler2DTexPos = lightShader.GetUniform("gPosition");
+                    lightSampler2DTexNorm = lightShader.GetUniform("gNormal");
+                    lightSampler2DTexAlbedoSpec = lightShader.GetUniform("gAlbedoSpec");
+                    lightUniformViewPos = lightShader.GetUniform("viewPos");
+
+                   lightUniformLightPositions = [];
+                   lightUniformLightColors = [];
+                   lightUniformLightLinears = [];
+                   lightUniformLightQuadratics = [];
+                    for (let i = 0; i < NR_LIGHTS; ++i) {
+                        lightUniformLightPositions.push(lightShader.GetUniform("lightPositions[" + i + "]"));
+                        lightUniformLightColors.push(lightShader.GetUniform("lightColors[" + i + "]"));
+                        lightUniformLightLinears.push(lightShader.GetUniform("lightLinears[" + i + "]"));
+                        lightUniformLightQuadratics.push(lightShader.GetUniform("lightQuadratics[" + i + "]"));
+                    }
+
+                    skullUniformModel = skull_shader.GetUniform("model");
+                    skullUniformView = skull_shader.GetUniform("view");
+                    skullUniformprojection = skull_shader.GetUniform("projection");
+                    skullAttribPos = skull_shader.GetAttribute("aPos");
+                    skullAttribTex = skull_shader.GetAttribute("aTexCoord");
+                    skullUniformAlbedoSpec = skull_shader.GetUniform("uColorSpec");
+
+                    debugAttribPos = debug_shader.GetAttribute("aPos");
+                    debugAttribTex = debug_shader.GetAttribute("aTexCoord");
+                    debugUniformModel = debug_shader.GetUniform("model");
+                    debugUniformView = debug_shader.GetUniform("view");
+                    debugUniformAlbedoSpec = debug_shader.GetUniform("uColorSpec");
+
+                    gBufferUniformAlbedoSpec =  gbuffer_shader.GetUniform("texDiffuseSpec");
+                    gBufferUniformNormal = gbuffer_shader.GetUniform("texNormal");
+                    gBufferUniformModel = gbuffer_shader.GetUniform("model");
+                    gBufferUniformView = gbuffer_shader.GetUniform("view");
+                    gBufferUniformProjection = gbuffer_shader.GetUniform("projection");
+                    gBufferAttribPosition = gbuffer_shader.GetAttribute("aPos");
+                    gBufferAttribNormal = gbuffer_shader.GetAttribute("aNormal");
+                    gBufferAttributeTexCoord = gbuffer_shader.GetAttribute("aTexCoords");
+
+                    if (skull_shader == null) {
+                        skull_shader = undefined;
+                    }
+
+                    gfx.EnableDepthTest();
+                    return;
+                }
+
+                
+                // Run game loop
+                let dt = 60.0 / 1000.0; // 16.6ms
+
+                cameraTime += dt * 0.25;
+                while (cameraTime >= 360.0) {
+                    cameraTime -= 360.0;
+                }
+                //cameraTime = 0.0;
+
+                lightTime += dt * lightDir;
+                if (lightTime > 5.0) {
+                    lightDir *= -1.0;
+                    lightTime = 5.0;
+                }
+                else if (lightTime < 0.0) {
+                    lightDir *= -1.0;
+                    lightTime = 0.0;
+                }
+
+                // Render game
+                /*float*/let camX = Math.sin(cameraTime) * cameraRadius;
+                /*float*/let camZ = Math.cos(cameraTime) * cameraRadius;
+                /*vec3 */let  cameraPos = [camX, cameraHeight, camZ];
+                /*mat4 */let view = LookAt(cameraPos, cameraTarget, [0, 1, 0]);
+                /*mat4 */let projection = Perspective(45.0, 800.0 / 600.0, 0.1, 100.0);
+                if (window.model === undefined) {
+                /*mat4 */var model = new Float32Array([0.1, 0, 0, 0,
+                                      0, 0.1, 0, 0,
+                                      0, 0, 0.1, 0,
+                                      0, -1, 0, 1
+                         ]);
+                }
+                else {
+                    model[0] = model[5] = model[10] = 0.1;
+                    model[15] = 1;
+                    model[13] = -1;
+                }
+
+                gfx.Clear(0.4, 0.5, 0.6, 1.0);
+                if (!skullUniformModel.valid || !skullUniformView.valid || !skullUniformprojection.valid) {
+                    gfx.ClearColor(1, 0, 0);
+                    return;
+                }
+
+                // Pass0 -> Draw GBuffer
+                gfx.SetRenderTarget(gBuffer);
+                gfx.Clear(0.3, 0.2, 0.1, 1);
+
+                gfx.BindShader(gbuffer_shader);
+                gfx.BindUniform(gBufferUniformProjection, Graphics.UniformType.Float16, projection);
+                gfx.BindUniform(gBufferUniformView, Graphics.UniformType.Float16, view);
+
+                { // Scene geom pass
+                    gfx.BindUniform(gBufferUniformModel, Graphics.UniformType.Float16, model);
+                    DrawSkull(gBufferAttribPosition, gBufferAttribNormal, gBufferAttributeTexCoord, gBufferUniformAlbedoSpec, gBufferUniformNormal);
+                    model[0] = model[5] = model[10] = 1.0;
+                    model[13] = 0;
+                }
+
+                // Pass1 -> Lighting pass
+                gfx.SetRenderTarget(null);
+                gfx.Clear(0.1, 0.2, 0.3, 1);
+                gfx.BindShader(lightShader);
+
+                if (undefined === window.sampler) {
+                    var sampler = new Graphics.Sampler();
+                }
+                gfx.BindTexture(lightSampler2DTexPos, gBufferPosition, sampler);
+                gfx.BindTexture(lightSampler2DTexNorm, gBufferNormal, sampler);
+                gfx.BindTexture(lightSampler2DTexAlbedoSpec, gBufferColorSpec, sampler);
+               
+                gfx.BindUniform(lightUniformLightPositions[0], Graphics.UniformType.Float3, lightPositions);
+                gfx.BindUniform(lightUniformLightColors[0], Graphics.UniformType.Float3, lightColors);
+                gfx.BindUniform(lightUniformLightLinears[0], Graphics.UniformType.Float1, f32One);
+                gfx.BindUniform(lightUniformLightQuadratics[0], Graphics.UniformType.Float1, f32Two);
+                
+                gfx.BindUniform(lightUniformViewPos, Graphics.UniformType.Float3, cameraPos);
+
+                if (window.quadPosView === undefined) {
+                    var quadPosView = new Graphics.BufferView(3, 4 * 5, Graphics.BufferType.Float32, 0);
+                }
+                if (window.quadTexView === undefined) {
+                    var quadTexView = new Graphics.BufferView(2, 4 * 5, Graphics.BufferType.Float32, 4 * 3);
+                }
+                gfx.BindBuffer(lightAttribPos, lightQuad, quadPosView);
+                gfx.BindBuffer(lightAttribUv,  lightQuad, quadTexView);
+
+                gfx.Draw(Graphics.DrawMode.TriangleStrip, 0, 4);
+            }
+
+            function LoadTexture(path) {
+                let result = {};
+                result.width = 0;
+                result.height = 0;
+                result.channels = 0;
+                result.data = null; 
+
+                const req = new XMLHttpRequest();
+                req.open('GET', path, true);
+                req.responseType = "arraybuffer";
+
+                req.onload = (event) => {
+                    const arrayBuffer = req.response; // Note: not req.responseText
+                    if (arrayBuffer) {
+                        let intArr = new Int32Array(arrayBuffer);
+                        result.width = intArr[0];
+                        result.height = intArr[1];
+                        result.channels = intArr[2];
+                        result.data = new Uint8Array(arrayBuffer, 12);
+                    }
+                };
+                req.send(null);
+
+                return result;
+            }
+
+            function LoadMesh(path) {
+                let result = {};
+                result.numPos = 0;
+                result.numNrm = 0;
+                result.numTex = 0;
+                result.pos = null; 
+                result.nrm = null; 
+                result.tex = null; 
+
+                const req = new XMLHttpRequest();
+                req.open('GET', path, true);
+                req.responseType = "arraybuffer";
+
+                req.onload = (event) => {
+                    const arrayBuffer = req.response; // Note: not req.responseText
+                    if (arrayBuffer) {
+                        let intArr = new Uint32Array(arrayBuffer);
+                        result.numPos = intArr[0];
+                        result.numNrm = intArr[1];
+                        result.numTex = intArr[2];
+                        let posLen = result.numPos * 3;
+                        let nrmLen = result.numNrm * 3;
+                        let texLen = result.numTex * 2;
+                        if (result.numPos != 0) {
+                            result.pos = new Float32Array(arrayBuffer, 12, posLen);
+                        }
+                        if (result.numNrm != 0) {
+                            result.nrm = new Float32Array(arrayBuffer, 12 + posLen * 4, nrmLen);
+                        }
+                        if (result.numTex != 0) {
+                            result.tex = new Float32Array(arrayBuffer, 12 + posLen * 4 + nrmLen * 4, texLen);
+                        }
+                    }
+                };
+                req.send(null);
+
+                return result;
+            }
+
+            function LoadShaderText(path) {
+                let result = {};
+                result.text = null;
+
+                const client = new XMLHttpRequest();
+                client.open('GET', path);
+                client.onload = function() {
+                    if (client.responseText) {
+                        result.text = client.responseText.replace("#version 330 core", "#version 300 es\nprecision highp float;");
+                    }
+                }
+                client.send();
+
+                return result;
+            }
+
+            function init() {
+                if (window.SPECTOR !== undefined) {
+                    var spector = new SPECTOR.Spector();
+                    spector.displayUI();
+                }
+
+                const gl = document.getElementById('webglCanvas').getContext('webgl2');
+                gl.getExtension('WEBGL_depth_texture');
+                gfx = new Graphics.Device(gl);
+
+                cameraRadius = 6.0;
+                cameraHeight = 1.0;
+                cameraTarget = [0, 0, 0];
+                cameraTime = 0.0;
+                lightTime = 0.0;
+                lightDir = 1.0;
+
+                skull_mesh = LoadMesh("assets/skull.mesh");
+                skull_vShader = LoadShaderText("assets/simple.vert");
+                skull_fShader = LoadShaderText("assets/simple.frag"); 
+                skull_albedo = LoadTexture("assets/Skull_AlbedoSpec.texture"); 
+                skull_normal = LoadTexture("assets/Skull_Normal.texture");
+                debug_vShader = LoadShaderText("assets/debug.vert"); 
+                debug_fShader = LoadShaderText("assets/debug.frag"); 
+                lightvShader = LoadShaderText("assets/light.vert"); 
+                lightfShader = LoadShaderText("assets/light.frag"); 
+                gbuffer_vshader = LoadShaderText("assets/gbuffer.vert"); 
+                gbuffer_fshader = LoadShaderText("assets/gbuffer.frag"); 
+
+                window.setInterval(loop, 16);
+            }
+        </script>
+        <!--link rel="stylesheet" href="style.css" /-->
+        <link href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAvW8cAP///wCjoJ0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAiIiIiAAAAACIiIiIAAAAAIiIiIgAAAAAiIiIiAAAAACIiIiIAAAAAAAAAAAAAAAAAAAAAAAAAAAMzMzAAAAAAAzMAMAAAAAADMwAwAAAAAAMzADAAAAAAAAAAAAAAAAAAAAAAAAD//wAAwAMAAMADAADAAwAAwAMAAMADAADAAwAAwAMAAMADAADAAwAAwAMAAMADAADABwAAwA8AAP//AAD//wAA" rel="icon" type="image/x-icon" />
+        <style>
+            * {
+                border: 0px;
+                padding: 0px;
+                margin: 0px;
+                color: rgb(220, 220, 220);
+                text-decoration: none;
+                font-size: 14px;
+                font-family: monospace;
+            }
+            html, body {
+                min-height: 100% !important;
+                min-width: 100% !important;
+                height: 100%;
+                width: 100%;
+
+                background-color: rgb(0, 0, 0);
+                color: rgb(220, 220, 220);
+            }
+        </style>
+    </head>  
+    <body onload="init();">
+        <canvas id="webglCanvas" width="800" height="600"></canvas>
+    </body>  
+</html>
