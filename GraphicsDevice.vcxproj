@@ -209,7 +209,7 @@
     <ClInclude Include="math.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FileLoaders.cpp" />
+    <ClCompile Include="FileLoadersWin32.cpp" />
     <ClCompile Include="gl.c" />
     <ClCompile Include="GraphicsWin32.cpp" />
     <ClCompile Include="math.cpp" />

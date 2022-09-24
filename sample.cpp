@@ -67,8 +67,29 @@ bool lastPCM;
 float ambientOnly;
 Graphics::Shader* gPCMShader;
 
-void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
+TextFile* blit_depth_vShader;
+TextFile* blit_depth_fShader;
+TextFile* lightmap_vShader;
+TextFile* lightmap_fShader;
+TextFile* lit_vShader;
+TextFile* lit_fShader;
+TextFile* lit_pcm_fShader;
+TextFile* hemi_vShader;
+TextFile* hemi_fShader;
+MeshFile* skullMesh;
+MeshFile* planeMesh;
+TextureFile* skullNormal;
+TextureFile* planeAlbedo;
+TextureFile* planeNormal;
+TextureFile* skullAlbedo;
+u32 numFilesToLoad;
+bool isFinishedInitializing;
+
+Graphics::Device* globalDevice;
+
+void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	IsRunning = true;
+	isFinishedInitializing = false;
 	enablePCM = true;
 	lastPCM = true;
 	ambientOnly = 0.0f;
@@ -79,7 +100,7 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	lightDir = 1.0f;
 	cameraTarget.y = 0.0f;
 
-	gfx = Graphics::Initialize(*gfx, platform);
+	gfx = globalDevice = Graphics::Initialize(*gfx, *platform);
 
 	gLightmapFBO = gfx->CreateFrameBuffer();
 	gLightmapColor = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, SHADOWMAP_RES, SHADOWMAP_RES);
@@ -91,18 +112,78 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 		*nah = '\0';
 	}
 
-	TextFile* vShader = LoadText("assets/blit-depth.vert");
-	TextFile* fShader = LoadText("assets/blit-depth.frag");
-	gLightmapBlitShader = gfx->CreateShader(vShader->text, fShader->text);
-	ReleaseText(vShader);
-	ReleaseText(fShader);
-	gLightmapFboAttachment = gLightmapBlitShader->GetUniform("fboAttachment");
+	numFilesToLoad = 15;
+	LoadText("assets/blit-depth.vert", [](const char* path, TextFile* file) {
+		blit_depth_vShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/blit-depth.frag", [](const char* path, TextFile* file) {
+		blit_depth_fShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/lightmap.vert", [](const char* path, TextFile* file) {
+		lightmap_vShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/lightmap.frag", [](const char* path, TextFile* file) {
+		lightmap_fShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/lit.vert", [](const char* path, TextFile* file) {
+		lit_vShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/lit.frag", [](const char* path, TextFile* file) {
+		lit_fShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/lit-pcm.frag", [](const char* path, TextFile* file) {
+		lit_pcm_fShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/hemi.vert", [](const char* path, TextFile* file) {
+		hemi_vShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadText("assets/hemi.frag", [](const char* path, TextFile* file) {
+		hemi_fShader = file;
+		numFilesToLoad -= 1;
+		});
+	LoadMesh("assets/skull.mesh", [](const char* path, MeshFile* file) {
+		skullMesh = file;
+		numFilesToLoad -= 1;
+		});
+	LoadMesh("assets/plane.mesh", [](const char* path, MeshFile* file) {
+		planeMesh = file;
+		numFilesToLoad -= 1;
+		});
+	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
+		skullNormal = file;
+		numFilesToLoad -= 1;
+		});
+	LoadTexture("assets/Plane_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
+		planeAlbedo = file;
+		numFilesToLoad -= 1;
+		});
+	LoadTexture("assets/Plane_Normal.texture", [](const char* path, TextureFile* file) {
+		planeNormal = file;
+		numFilesToLoad -= 1;
+		});
+	LoadTexture("assets/Skull_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
+		skullAlbedo = file;
+		numFilesToLoad -= 1;
+		});
+}
 
-	vShader = LoadText("assets/lightmap.vert");
-	fShader = LoadText("assets/lightmap.frag");
-	gLightmapDrawShader = gfx->CreateShader(vShader->text, fShader->text);
-	ReleaseText(vShader);
-	ReleaseText(fShader);
+void FinishInitializing(Graphics::Device* gfx) {
+	gLightmapBlitShader = gfx->CreateShader(blit_depth_vShader->text, blit_depth_fShader->text);
+	ReleaseText(blit_depth_vShader);
+	ReleaseText(blit_depth_fShader);
+	gLightmapFboAttachment = gLightmapBlitShader->GetUniform("fboAttachment");
+	
+	gLightmapDrawShader = gfx->CreateShader(lightmap_vShader->text, lightmap_fShader->text);
+	ReleaseText(lightmap_vShader);
+	ReleaseText(lightmap_fShader);
 
 	gLightmapSkullLayout = gfx->CreateVertexLayout();
 	Graphics::Index lightmapPositionAttrib = gLightmapDrawShader->GetAttribute("position");
@@ -129,18 +210,14 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	gBuffers[9] = lightmapMesh;
 
 	/// Lit shader
-	vShader = LoadText("assets/lit.vert");
-	fShader = LoadText("assets/lit.frag");
-	gLitShader = gfx->CreateShader(vShader->text, fShader->text);
-	ReleaseText(vShader);
-	ReleaseText(fShader);
+	
+	gLitShader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
+	ReleaseText(lit_fShader);
 
-	vShader = LoadText("assets/lit.vert");
-	fShader = LoadText("assets/lit-pcm.frag");
-	gLitShaderPCM = gfx->CreateShader(vShader->text, fShader->text);
+	gLitShaderPCM = gfx->CreateShader(lit_vShader->text, lit_pcm_fShader->text);
 	gPCMShader = gLitShaderPCM;
-	ReleaseText(vShader);
-	ReleaseText(fShader);
+	ReleaseText(lit_vShader);
+	ReleaseText(lit_pcm_fShader);
 
 	gLitModelIndex = gLitShader->GetUniform("model");
 	gLitShadowIndex = gLitShader->GetUniform("shadow");
@@ -157,15 +234,11 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	gLitAmbientOnly = gLitShader->GetUniform("AmbientOnly");
 
 	/// Initialize skull
-	vShader = LoadText("assets/hemi.vert");
-	fShader = LoadText("assets/hemi.frag");
-	gHemiShader = gfx->CreateShader(vShader->text, fShader->text);
-	ReleaseText(vShader);
-	ReleaseText(fShader);
-	
 
-	MeshFile* skullMesh = LoadMesh("assets/skull.mesh");
-	MeshFile* planeMesh = LoadMesh("assets/plane.mesh");
+	gHemiShader = gfx->CreateShader(hemi_vShader->text, hemi_fShader->text);
+	ReleaseText(hemi_vShader);
+	ReleaseText(hemi_fShader);
+	
 	Graphics::Buffer* positions = gfx->CreateBuffer(skullMesh->pos, sizeof(float) * 3 * skullMesh->numPos);
 	Graphics::Buffer* texCoords = gfx->CreateBuffer(skullMesh->tex, sizeof(float) * 2 * skullMesh->numTex);
 	Graphics::Buffer* normals = gfx->CreateBuffer(skullMesh->nrm, sizeof(float) * 3 * skullMesh->numNrm);
@@ -275,7 +348,6 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	gLightAmbientOnly = gHemiShader->GetUniform("AmbientOnly");
 	gViewPos = gHemiShader->GetUniform("ViewPos");
 
-	TextureFile* skullAlbedo = LoadTexture("assets/Skull_AlbedoSpec.texture");
 	Graphics::TextureFormat format = Graphics::TextureFormat::RGBA8;
 	if (skullAlbedo->channels == 3) {
 		format = Graphics::TextureFormat::RGB8;
@@ -283,15 +355,13 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	gSkullTextureAlbedo = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, skullAlbedo->width, skullAlbedo->height, skullAlbedo->data, format,true);
 	ReleaseTexture(skullAlbedo);
 
-	TextureFile* skullNormal = LoadTexture("assets/Skull_Normal.texture");
 	format = Graphics::TextureFormat::RGBA8;
 	if (skullNormal->channels == 3) {
 		format = Graphics::TextureFormat::RGB8;
 	}
 	gSkullTextureNormal = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, skullNormal->width, skullNormal->height, skullNormal->data, format, true);
 	ReleaseTexture(skullNormal);
-
-	TextureFile* planeAlbedo = LoadTexture("assets/Plane_AlbedoSpec.texture");
+	
 	format = Graphics::TextureFormat::RGBA8;
 	if (planeAlbedo->channels == 3) {
 		format = Graphics::TextureFormat::RGB8;
@@ -299,7 +369,7 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	gPlaneTextureAlbedo = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, planeAlbedo->width, planeAlbedo->height, planeAlbedo->data, format, true);
 	ReleaseTexture(planeAlbedo);
 	
-	TextureFile* planeNormal = LoadTexture("assets/Plane_Normal.texture");
+	
 	format = Graphics::TextureFormat::RGBA8;
 	if (planeNormal->channels == 3) {
 		format = Graphics::TextureFormat::RGB8;
@@ -308,13 +378,24 @@ void Initialize(Graphics::Dependencies& platform, Graphics::Device* gfx) {
 	ReleaseTexture(planeNormal);
 
 	gfx->SetDepthState(true);
+
+	isFinishedInitializing = true;
 }
 
 void Update(Graphics::Device* g, float deltaTime) {
 	if (!IsRunning) {
 		return;
-	};
-	;
+	}
+
+	if (numFilesToLoad != 0) {
+		return;
+	}
+
+	if (!isFinishedInitializing) {
+		FinishInitializing(g);
+		return;
+	}
+
 	if (lastPCM != enablePCM) {
 		gLightmapDepth->SetPCM(enablePCM);
 		if (enablePCM) {

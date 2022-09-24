@@ -23,9 +23,13 @@ struct TextFile {
 	unsigned int length;
 };
 
-MeshFile* LoadMesh(const char* path); 
-TextureFile* LoadTexture(const char* path);
-TextFile* LoadText(const char* path);
+typedef void (*OnMeshLoaded)(const char* path, MeshFile* file);
+typedef void (*OnTextureLoaded)(const char* path, TextureFile* file);
+typedef void (*OnTextFileLoaded)(const char* path, TextFile* file);
+
+void LoadMesh(const char* path, OnMeshLoaded onMeshLoad);
+void LoadTexture(const char* path, OnTextureLoaded onTextureLoad);
+void LoadText(const char* path, OnTextFileLoaded onTextLoad);
 
 void ReleaseMesh(MeshFile* file);
 void ReleaseTexture(TextureFile* file);

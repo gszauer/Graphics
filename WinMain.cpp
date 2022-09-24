@@ -16,7 +16,7 @@
 char buf[1024];
 Graphics::Device* gfx;
 
-void Initialize(Graphics::Dependencies& p, Graphics::Device*);
+void Initialize(Graphics::Dependencies* p, Graphics::Device*);
 void Update(Graphics::Device*, float deltaTime);
 void Render(Graphics::Device*, int x, int y, int w, int h);
 void Shutdown(Graphics::Device*);
@@ -234,7 +234,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 	ShowWindow(hwnd, SW_SHOW);
 	UpdateWindow(hwnd);
-	Initialize(platform, gfx);
+	Initialize(&platform, gfx);
 
 	DWORD lastTick = GetTickCount();
 	MSG msg;

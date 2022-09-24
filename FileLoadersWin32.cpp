@@ -62,8 +62,7 @@ namespace Internal {
 }
 
 
-
-TextFile* LoadText(const char* path) {
+void LoadText(const char* path, OnTextFileLoaded onTextLoad) {
 	HANDLE hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	DWORD bytesInFile = GetFileSize(hFile, 0);
 	DWORD bytesRead = 0;
@@ -75,31 +74,35 @@ TextFile* LoadText(const char* path) {
 	iter += sizeof(TextFile);
 
 	if (hFile == INVALID_HANDLE_VALUE) {
-		return 0;
+		onTextLoad(path, 0);
+		return;
 	}
 	if (ReadFile(hFile, iter, bytesInFile, &bytesRead, NULL) == 0) {
 		CloseHandle(hFile);
-		return 0;
+		onTextLoad(path, 0);
+		return;
 	}
 
 	result->length = (unsigned int)bytesInFile;
 	result->text = (char*)iter;
 	CloseHandle(hFile);
-	return result;
+	onTextLoad(path, result);
 }
 
-MeshFile* LoadMesh(const char* path) {
+void LoadMesh(const char* path, OnMeshLoaded onMeshLoad) {
 	HANDLE hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	DWORD bytesRead = 0;
 
 	unsigned int sizes[3];
 
 	if (hFile == INVALID_HANDLE_VALUE) {
-		return 0;
+		onMeshLoad(path, 0);
+		return;
 	}
 	if (ReadFile(hFile, sizes, sizeof(unsigned int) * 3, &bytesRead, NULL) == 0) {
 		CloseHandle(hFile);
-		return 0;
+		onMeshLoad(path, 0);
+		return;
 	}
 
 	unsigned int mem_needed = sizeof(MeshFile) + sizeof(float) * 3 * sizes[0] * 2 + sizeof(float) * 3 * sizes[1] + sizeof(float) * 2 * sizes[2];
@@ -113,7 +116,8 @@ MeshFile* LoadMesh(const char* path) {
 	if (sizes[0] != 0) {
 		if (ReadFile(hFile, pos, sizeof(float) * 3 * sizes[0], &bytesRead, NULL) == 0) {
 			CloseHandle(hFile);
-			return 0;
+			onMeshLoad(path, 0);
+			return;
 		}
 		iter += sizeof(float) * 3 * sizes[0];
 	}
@@ -122,7 +126,8 @@ MeshFile* LoadMesh(const char* path) {
 	if (sizes[1] != 0) {
 		if (ReadFile(hFile, nrm, sizeof(float) * 3 * sizes[1], &bytesRead, NULL) == 0) {
 			CloseHandle(hFile);
-			return 0;
+			onMeshLoad(path, 0);
+			return;
 		}
 		iter += sizeof(float) * 3 * sizes[1];
 	}
@@ -131,7 +136,8 @@ MeshFile* LoadMesh(const char* path) {
 	if (sizes[2] != 0) {
 		if (ReadFile(hFile, tex, sizeof(float) * 2 * sizes[2], &bytesRead, NULL) == 0) {
 			CloseHandle(hFile);
-			return 0;
+			onMeshLoad(path, 0);
+			return;
 		}
 		iter += sizeof(float) * 2 * sizes[1];
 	}
@@ -148,21 +154,23 @@ MeshFile* LoadMesh(const char* path) {
 	result->tex = tex;
 
 	CloseHandle(hFile);
-	return result;
+	onMeshLoad(path, result);
 }
 
-TextureFile* LoadTexture(const char* path) {
+void LoadTexture(const char* path, OnTextureLoaded onTextureLoad) {
 	HANDLE hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	DWORD bytesRead = 0;
 
 	unsigned int sizes[3];
 
 	if (hFile == INVALID_HANDLE_VALUE) {
-		return 0;
+		onTextureLoad(path, 0);
+		return;
 	}
 	if (ReadFile(hFile, sizes, sizeof(unsigned int) * 3, &bytesRead, NULL) == 0) {
 		CloseHandle(hFile);
-		return 0;
+		onTextureLoad(path, 0);
+		return;
 	}
 
 	unsigned int mem_needed = sizeof(TextureFile) + sizeof(unsigned char) * sizes[0] * sizes[1] * sizes[2];
@@ -176,7 +184,8 @@ TextureFile* LoadTexture(const char* path) {
 	if (sizes[0] * sizes[1] * sizes[2] != 0) {
 		if (ReadFile(hFile, texData, sizeof(unsigned char) * sizes[0] * sizes[1] * sizes[2], &bytesRead, NULL) == 0) {
 			CloseHandle(hFile);
-			return 0;
+			onTextureLoad(path, 0);
+			return;
 		}
 	}
 	
@@ -187,7 +196,7 @@ TextureFile* LoadTexture(const char* path) {
 	result->channels = sizes[2];
 	result->data = texData;
 
-	return result;
+	onTextureLoad(path, result);
 }
 
 void ReleaseMesh(MeshFile* file) {

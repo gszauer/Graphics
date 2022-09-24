@@ -41,7 +41,7 @@
     <ClCompile Include="math.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FileLoaders.cpp">
+    <ClCompile Include="FileLoadersWin32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sample.cpp">
