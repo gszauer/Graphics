@@ -112,6 +112,8 @@ extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, c
 #define GL_RG32F						0x8230
 #define GL_RGB32F						0x8815
 #define GL_RGBA32F						0x8814
+#define GL_DEPTH_COMPONENT24				0x81A6
+#define GL_DEPTH_COMPONENT16				0x81A5
 #define GL_DEPTH_COMPONENT				0x1902
 #define GL_UNSIGNED_BYTE				0x1401
 #define GL_RGB							0x1907
@@ -330,12 +332,12 @@ namespace Graphics {
 				return GL_RGBA32F;
 			}
 
-			return GL_DEPTH_COMPONENT; // Default to depth i guess
+			return GL_DEPTH_COMPONENT24; // Default to depth i guess
 		}
 
 		inline TextureFormatResult TextureGetDataFormatFromEnum(TextureFormat component) {
-			GLenum dataFormat = GL_DEPTH_COMPONENT;
-			GLenum dataType = GL_UNSIGNED_BYTE; 
+			GLenum dataFormat = GL_DEPTH_COMPONENT24;
+			GLenum dataType = GL_UNSIGNED_INT; 
 
 			if (component == TextureFormat::R8) {
 				dataFormat = GL_RED;
@@ -1346,7 +1348,8 @@ export Graphics::Device* wasm_Graphics_Initialize(Graphics::fpRequest allocPtr, 
 	Graphics::Dependencies platform;
 	platform.Request = allocPtr;
 	platform.Release = releasePtr;
-	return Graphics::Initialize(platform);
+	Graphics::Device* device = (Graphics::Device*)allocPtr(sizeof(Graphics::Device));
+	return Graphics::Initialize(*device, platform);
 }
 
 export void wasm_Graphics_Shutdown(Graphics::Device* device) {

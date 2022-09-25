@@ -15,18 +15,15 @@
 	#define assert(cond, msg) ;
 #endif
 
-#if _WASM32
-	namespace Memory {
-		Allocator* wasmGlobalAllocator = 0;
-	}
-	#define NotImplementedException() __builtin_trap()
-#else
-	#define NotImplementedException() (*(char*)((void*)0) = '\0')
-#endif
+namespace Memory {
+	Allocator* wasmGlobalAllocator = 0;
+}
+#define NotImplementedException() Memory::Assert(false, "Not implemented exception", __LINE__m, __FILE__);
 
 extern "C" void* __cdecl memset(void* _mem, i32 _value, Memory::ptr_type _size) {
 	return Memory::Set(_mem, (u8)_value, (u32)_size, "internal - memset");
 }
+extern "C" void wasmGraphics_Log(const char* loc, int locLen, const char* msg, int msgLen);
 
 namespace Memory {
 	namespace Debug {
@@ -35,9 +32,11 @@ namespace Memory {
 	static void Assert(bool condition, const char* msg, u32 line, const char* file) {
 #if _WASM32
 		if (condition == false) {
-            u32 wasmLen = 0;
-            for (const char* i = msg; msg != 0 && *i != '\0'; ++i, ++wasmLen);
-            //wasmConsoleLog(msg, wasmLen);
+            u32 msg_len = 0;
+            for (const char* i = msg; msg != 0 && *i != '\0'; ++i, ++msg_len);
+			u32 loc_len = 0;
+            for (const char* i = file; file != 0 && *i != '\0'; ++i, ++loc_len);
+            wasmGraphics_Log(file, loc_len, msg, msg_len);
             __builtin_trap();
 		}
 #else
@@ -1245,7 +1244,7 @@ namespace Memory {
 			constexpr char operator[](ptr_type n) const noexcept { // []
 #if _WASM32
 				if (n >= sz_) {
-					__builtin_trap();
+					Assert(false, "n >= sz", __LINE__, __FILE__);
 				}
 				return p_[n];
 #else

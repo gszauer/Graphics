@@ -100,78 +100,90 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	lightDir = 1.0f;
 	cameraTarget.y = 0.0f;
 
-	gfx = globalDevice = Graphics::Initialize(*gfx, *platform);
+	globalDevice = gfx;
 
 	gLightmapFBO = gfx->CreateFrameBuffer();
 	gLightmapColor = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, SHADOWMAP_RES, SHADOWMAP_RES);
-	gLightmapDepth = gfx->CreateTexture(Graphics::TextureFormat::Depth, SHADOWMAP_RES, SHADOWMAP_RES);
+	gLightmapDepth = gfx->CreateTexture(Graphics::TextureFormat::Depth, SHADOWMAP_RES, SHADOWMAP_RES, 0, Graphics::TextureFormat::Depth, false);
 	//gLightmapFBO->AttachColor(*gLightmapColor);
 	gLightmapFBO->AttachDepth(*gLightmapDepth);
-	if (!gLightmapFBO->IsValid()) {
-		char* nah = (char*)0;
-		*nah = '\0';
-	}
+	GraphicsAssert(gLightmapFBO->IsValid(), "Invalid fbo");
 
 	numFilesToLoad = 15;
 	LoadText("assets/blit-depth.vert", [](const char* path, TextFile* file) {
 		blit_depth_vShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/blit-depth.frag", [](const char* path, TextFile* file) {
 		blit_depth_fShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/lightmap.vert", [](const char* path, TextFile* file) {
 		lightmap_vShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/lightmap.frag", [](const char* path, TextFile* file) {
 		lightmap_fShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/lit.vert", [](const char* path, TextFile* file) {
 		lit_vShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/lit.frag", [](const char* path, TextFile* file) {
 		lit_fShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/lit-pcm.frag", [](const char* path, TextFile* file) {
 		lit_pcm_fShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/hemi.vert", [](const char* path, TextFile* file) {
 		hemi_vShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadText("assets/hemi.frag", [](const char* path, TextFile* file) {
 		hemi_fShader = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadMesh("assets/skull.mesh", [](const char* path, MeshFile* file) {
 		skullMesh = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadMesh("assets/plane.mesh", [](const char* path, MeshFile* file) {
 		planeMesh = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
 		skullNormal = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadTexture("assets/Plane_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
 		planeAlbedo = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadTexture("assets/Plane_Normal.texture", [](const char* path, TextureFile* file) {
 		planeNormal = file;
 		numFilesToLoad -= 1;
+		
 		});
 	LoadTexture("assets/Skull_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
 		skullAlbedo = file;
 		numFilesToLoad -= 1;
+		
 		});
 }
 
@@ -393,8 +405,11 @@ void Update(Graphics::Device* g, float deltaTime) {
 
 	if (!isFinishedInitializing) {
 		FinishInitializing(g);
+		GraphicsAssert(false, "Finished Initializing");
 		return;
 	}
+
+	return;
 
 	if (lastPCM != enablePCM) {
 		gLightmapDepth->SetPCM(enablePCM);

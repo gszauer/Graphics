@@ -1,5 +1,16 @@
+#if 0
+static __attribute__((always_inline)) inline void* memcpy (void *dest, const void *src, unsigned int len) {
+  char *d = (char*)dest;
+  const char *s = (const char*)src;
+  while (len--)
+    *d++ = *s++;
+  return dest;
+}
+#endif
+
 #include "GraphicsWASM.cpp"
 #include "mem.cpp"
+#include "math.cpp"
 
 Memory::Allocator* wasmGraphics_GlobalAllocator = 0;
 
@@ -26,5 +37,17 @@ export fpWasmGraphicsReleaseMem wasmGraphics_GetReleaseFunction() {
     return wasmGraphics_ReleaseMem;
 }
 
-// TODO: File loader API
-// TODO: Sample.cpp
+#include "FileLoadersWASM.cpp"
+#include "sample.cpp"
+
+export void StartSample(Graphics::Device* gfx) {
+    Graphics::Dependencies deps;
+    deps.Request = wasmGraphics_AllocateMem;
+    deps.Release = wasmGraphics_ReleaseMem;
+    GraphicsAssert(gfx != 0, "Can't have null GFX");
+    Initialize(&deps, gfx);
+}
+
+export void UpdateSample(Graphics::Device* gfx, float dt) {
+    Update(gfx, dt);
+}

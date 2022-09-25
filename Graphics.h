@@ -623,7 +623,9 @@ namespace Graphics {
 
 	Device* Initialize(Device& outDevice, Dependencies& platform);
 	inline Device* Initialize(Dependencies& platform) {
-		return (Device*)platform.Request(sizeof(Graphics::Device));
+		Device* result = (Device*)platform.Request(sizeof(Graphics::Device));
+		Initialize(*result, platform);
+		return result;
 	}
 	void Shutdown(Device& device);
 }

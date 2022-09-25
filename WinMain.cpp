@@ -231,6 +231,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	platform.Request = RequestMem;
 	platform.Release = ReleaseMem;
 	gfx = (Graphics::Device*)RequestMem(sizeof(Graphics::Device));
+	gfx = Graphics::Initialize(*gfx, platform);
 
 	ShowWindow(hwnd, SW_SHOW);
 	UpdateWindow(hwnd);

@@ -16,14 +16,44 @@
             var graphics = null;
             var program = null;
 
+            let lastTime = 0;
+
+            function LoadFileAsArrayBuffer(path, onFileLoaded) { 
+                const req = new XMLHttpRequest();
+                req.open('GET', path, true);
+                req.responseType = "arraybuffer";
+
+                req.onload = (event) => {
+                    const arrayBuffer = req.response; // Note: not req.responseText
+                    if (arrayBuffer) {
+                        onFileLoaded(path, arrayBuffer);
+                    }
+                    else {
+                        onFileLoaded(path, null);
+                    }
+                };
+                req.send(null);
+            }
+
+            var looping = 0;
             function loop() {
-                console.log("Looping");
+                if (looping++ == 0) {
+                    console.log("Looping");
+                }
+                else if (looping > 128) {
+                    looping = 0;
+                }
+
+                let thisTime = performance.now();
+                let deltaTime = (thisTime - lastTime) * 0.001;
+
+                program.instance.exports.UpdateSample(graphics.devicePtr, deltaTime);
+                lastTime = thisTime;
             }
 
             function start() {
-                // TODO: Both allocator and graphics are now up and running. Request files, and wait for loop.
-                console.log("Starting");
-
+                program.instance.exports.StartSample(graphics.devicePtr);
+                lastTime = performance.now();
                 window.setInterval(loop, 16);
             }
 
@@ -39,17 +69,99 @@
                 };
 
                 // Create game allocator
-                let heapSize = 32 * 1024 * 1024; // 32 MiB Heap
+                let heapSize = 128 * 1024 * 1024; // 32 MiB Heap
                 let stackSize = 8 * 1024 * 1024; // 8 MiB Stack (compiled with 4...)
                 let dataSize = 8 * 1024 * 1024; // 8 MiB Data
 
                 allocator = new GameAllocator(heapSize + dataSize + stackSize, heapSize);
                 allocator.InjectWebAssemblyImportObject(importObject);
+
+                importObject.env.memcpy = function(ptr_dest, ptr_src, int_len) {
+                    let dst_buffer = new Uint8Array(allocator.memory.buffer, ptr_dest, int_len);
+                    let src_buffer = new Uint8Array(allocator.memory.buffer, ptr_src, int_len);
+                    for (let i = 0; i < int_len; ++i) {
+                        dst_buffer[i] = src_buffer[i];
+                    }
+                    return dest;
+                }
                 
                 // Create graphics device
                 const gl = document.getElementById('webglCanvas').getContext('webgl2');
-                graphics = new GraphicsManager(gl, console.log);
+                graphics = new GraphicsManager(gl);
                 graphics.InjectWebAssemblyImportObject(importObject);
+
+                // Init file loaders
+                let decoder = new TextDecoder();
+                importObject.env.wasmFileLoaderLoadText = function(ptr_path, int_len, ptr_callback) {
+                    let path = decoder.decode(new Uint8Array(allocator.memory.buffer, ptr_path, int_len));
+                    LoadFileAsArrayBuffer(path, function(path, arrayBuffer) {
+                        let size = 0;
+                        let ptr_data = 0;
+                        if (arrayBuffer == null) {
+                            arrayBuffer = 0;
+                        }
+                        else {
+                            size = arrayBuffer.byteLength;
+                            ptr_data = allocator.Allocate(size);
+
+                            let dst_array = new Uint8Array(allocator.memory.buffer, ptr_data, size);
+                            let src_array = new Uint8Array(arrayBuffer);
+
+                            for (let i = 0; i < size; ++i) {
+                                dst_array[i] = src_array[i];
+                            }
+                        }
+                        
+                        program.instance.exports.FinishLoadingText(ptr_path, ptr_callback, ptr_data, size);
+                    });
+                }
+                importObject.env.wasmFileLoaderLoadMesh = function(ptr_path, int_len, ptr_callback) {
+                    let path = decoder.decode(new Uint8Array(allocator.memory.buffer, ptr_path, int_len));
+                    LoadFileAsArrayBuffer(path, function(path, arrayBuffer) {
+                        let size = 0;
+                        let ptr_data = 0;
+                        if (arrayBuffer == null) {
+                            arrayBuffer = 0;
+                        }
+                        else {
+                            size = arrayBuffer.byteLength;
+                            ptr_data = allocator.Allocate(size);
+
+                            let dst_array = new Uint8Array(allocator.memory.buffer, ptr_data, size);
+                            let src_array = new Uint8Array(arrayBuffer);
+
+                            for (let i = 0; i < size; ++i) {
+                                dst_array[i] = src_array[i];
+                            }
+                        }
+                        
+                        program.instance.exports.FinishLoadingMesh(ptr_path, ptr_callback, ptr_data, size);
+                    });
+                }
+
+                importObject.env.wasmFileLoaderLoadTexture = function(ptr_path, int_len, ptr_callback) {
+                    let path = decoder.decode(new Uint8Array(allocator.memory.buffer, ptr_path, int_len));
+                    LoadFileAsArrayBuffer(path, function(path, arrayBuffer) {
+                        let size = 0;
+                        let ptr_data = 0;
+                        if (arrayBuffer == null) {
+                            arrayBuffer = 0;
+                        }
+                        else {
+                            size = arrayBuffer.byteLength;
+                            ptr_data = allocator.Allocate(size);
+
+                            let dst_array = new Uint8Array(allocator.memory.buffer, ptr_data, size);
+                            let src_array = new Uint8Array(arrayBuffer);
+
+                            for (let i = 0; i < size; ++i) {
+                                dst_array[i] = src_array[i];
+                            }
+                        }
+                        
+                        program.instance.exports.FinishLoadingTexture(ptr_path, ptr_callback, ptr_data, size);
+                    });
+                }
 
                 WebAssembly.instantiateStreaming(fetch('GraphicsSample.wasm'), importObject).then(prog => {
                     program = prog;

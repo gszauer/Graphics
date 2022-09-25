@@ -15,11 +15,11 @@ class GameAllocator {
         // WASM is 64 KiB / page (our allocator is 4 KiB);
         let wasmPageSize = 64 * 1024; // 64 KiB
         let wasmNumPages = Math.ceil(totalMemoryBytes / wasmPageSize);
-        self.WebAssemblyMemory = new WebAssembly.Memory( {
+        this.WebAssemblyMemory = new WebAssembly.Memory( {
             initial: wasmNumPages,
             maximum: wasmNumPages
         });
-        self.memory = this.WebAssemblyMemory;
+        this.memory = this.WebAssemblyMemory;
     }
 
     logError(str) {
@@ -63,7 +63,7 @@ class GameAllocator {
         this.AllocatorPtr = 0;
     }
 
-    Allocte(bytes, alignment) {
+    Allocate(bytes, alignment) {
         if (!alignment) {
             alignment = 0;
         }
