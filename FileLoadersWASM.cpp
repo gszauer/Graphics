@@ -8,6 +8,8 @@ namespace Internal {
 		vec3* tan1 = (vec3*)wasmGraphics_AllocateMem(vertexCount * 2 * sizeof(vec3));
 		vec3* tan2 = tan1 + vertexCount;
 
+		Memory::Set(tan1, 0, vertexCount * 2 * sizeof(vec3), __LOCATION__);
+
 		for (long a = 0; a < vertexCount; a += 3)
 		{
 			vec3 v1 = vertex[a + 0];
@@ -50,13 +52,14 @@ namespace Internal {
 			vec3 t = tan1[a];
 
 			// Gram-Schmidt orthogonalize
+			
 			outTangent[a] = normalized(t - n * dot(n, t));
 
 			// Calculate handedness
 			//tangent[a].w = (dot(cross(n, t), tan2[a]) < 0.0F) ? -1.0F : 1.0F;
 		}
 
-		//wasmGraphics_ReleaseMem(tan1);
+		wasmGraphics_ReleaseMem(tan1);
 	}
 
 	u32 StrLen(const char* str) {
@@ -104,7 +107,9 @@ export void FinishLoadingMesh(const char* path, OnMeshLoaded triggerThisCallback
 	sizes[1] = uint_data[1];
 	sizes[2] = uint_data[2];
 
-	unsigned int mem_needed = sizeof(MeshFile);
+	unsigned int mem_needed = sizeof(MeshFile) 
+		+ sizeof(float) * 3 * sizes[0]; // tan
+
 	void* mem = wasmGraphics_AllocateMem(mem_needed + 1);
 	unsigned char* iter = (unsigned char* )mem;
 	
@@ -115,7 +120,7 @@ export void FinishLoadingMesh(const char* path, OnMeshLoaded triggerThisCallback
 	float* nrm = pos + sizes[0] * 3;
 	float* tex = nrm + sizes[1] * 3;
 
-	result->tan = tex + sizes[2] * 2;
+	result->tan = (float*)iter;
 	Internal::CalculateTangentArray(sizes[0], (vec3*)pos, (vec3*)nrm, (vec2*)tex, (vec3*)result->tan);
 
 	result->numTan = sizes[0];
@@ -138,9 +143,8 @@ void LoadMesh(const char* path, OnMeshLoaded onMeshLoad) {
 }
 
 void ReleaseMesh(MeshFile* file) {
-	void* dataPtr = file->pos - 3;
-	//wasmGraphics_ReleaseMem(dataPtr);
-	//wasmGraphics_ReleaseMem(file);
+	wasmGraphics_ReleaseMem(file->tan);
+	wasmGraphics_ReleaseMem(file);
 }
 
 extern "C" void wasmFileLoaderLoadTexture(const char* path, int len, OnTextureLoaded callback);
@@ -175,7 +179,7 @@ void LoadTexture(const char* path, OnTextureLoaded onTextureLoad) {
 
 void ReleaseTexture(TextureFile* file) {
 	void* dataPtr = (unsigned char*)file->data - 3;
-	//wasmGraphics_ReleaseMem(dataPtr);
-	//wasmGraphics_ReleaseMem(file);
+	wasmGraphics_ReleaseMem(dataPtr);
+	wasmGraphics_ReleaseMem(file);
 }
 

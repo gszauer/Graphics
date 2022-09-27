@@ -409,10 +409,15 @@ namespace Graphics {
 			result.program = 0;
 
 			int vLen = 0;
-			for (const char* i = vertexSource; vertexSource != 0 && *i != '\0'; ++i, ++vLen);
+			GraphicsAssert(vertexSource != 0, "Empty vertex pointer");
+			for (const char* i = vertexSource; *i != '\0'; ++i, ++vLen);
+			const char* vp1 = vertexSource + 1;
+			GraphicsAssert(vLen != 0, "Empty vertex shader");
 
 			int fLen = 0;
-			for (const char* i = fragmentSource; fragmentSource != 0 && *i != '\0'; ++i, ++fLen);
+			GraphicsAssert(fragmentSource != 0, "Empty fragment pointer");
+			for (const char* i = fragmentSource; *i != '\0'; ++i, ++fLen);
+			GraphicsAssert(fLen != 0, "Empty fragment shader");
 
 			result.program = wasmGraphics_CompileShader(vertexSource, vLen, fragmentSource, fLen);
 			result.success = result.program != 0;

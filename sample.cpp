@@ -122,6 +122,10 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 		});
 	LoadText("assets/lightmap.vert", [](const char* path, TextFile* file) {
 		lightmap_vShader = file;
+		GraphicsAssert(lightmap_vShader->length != 0, "Empty lightmap.vert");
+		GraphicsAssert(lightmap_vShader->text != 0, "No text pointer in lightmap.vert");
+		GraphicsAssert(*lightmap_vShader->text != 0, "Empty string in lightmap.vert");
+		//GraphicsAssert(*lightmap_vShader->text == 0, file->text );
 		numFilesToLoad -= 1;
 		
 		});
@@ -158,12 +162,10 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	LoadMesh("assets/skull.mesh", [](const char* path, MeshFile* file) {
 		skullMesh = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadMesh("assets/plane.mesh", [](const char* path, MeshFile* file) {
 		planeMesh = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
 		skullNormal = file;
@@ -188,14 +190,17 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 }
 
 void FinishInitializing(Graphics::Device* gfx) {
+	GraphicsAssert(lightmap_vShader->length != 0, "2c Empty lightmap.vert");
+	GraphicsAssert(lightmap_vShader->text != 0, "2 No text pointer in lightmap.vert");
+	GraphicsAssert(*lightmap_vShader->text != 0, "2 Empty string in lightmap.vert");
+	gLightmapDrawShader = gfx->CreateShader(lightmap_vShader->text, lightmap_fShader->text);
+	ReleaseText(lightmap_vShader);
+	ReleaseText(lightmap_fShader);
+	
 	gLightmapBlitShader = gfx->CreateShader(blit_depth_vShader->text, blit_depth_fShader->text);
 	ReleaseText(blit_depth_vShader);
 	ReleaseText(blit_depth_fShader);
 	gLightmapFboAttachment = gLightmapBlitShader->GetUniform("fboAttachment");
-	
-	gLightmapDrawShader = gfx->CreateShader(lightmap_vShader->text, lightmap_fShader->text);
-	ReleaseText(lightmap_vShader);
-	ReleaseText(lightmap_fShader);
 
 	gLightmapSkullLayout = gfx->CreateVertexLayout();
 	Graphics::Index lightmapPositionAttrib = gLightmapDrawShader->GetAttribute("position");
@@ -404,6 +409,7 @@ void Update(Graphics::Device* g, float deltaTime) {
 	}
 
 	if (!isFinishedInitializing) {
+		isFinishedInitializing = true;
 		FinishInitializing(g);
 		GraphicsAssert(false, "Finished Initializing");
 		return;

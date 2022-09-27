@@ -105,7 +105,11 @@ void LoadMesh(const char* path, OnMeshLoaded onMeshLoad) {
 		return;
 	}
 
-	unsigned int mem_needed = sizeof(MeshFile) + sizeof(float) * 3 * sizes[0] * 2 + sizeof(float) * 3 * sizes[1] + sizeof(float) * 2 * sizes[2];
+	unsigned int mem_needed = sizeof(MeshFile) 
+		+ sizeof(float) * 3 * sizes[0] // pos
+		+ sizeof(float) * 3 * sizes[1] // norm 
+		+ sizeof(float) * 2 * sizes[2]; // uv
+		+ sizeof(float) * 3 * sizes[0] // tan
 	void* mem = VirtualAlloc(0, mem_needed + 1, MEM_COMMIT, PAGE_READWRITE);
 	unsigned char* iter = (unsigned char* )mem;
 	

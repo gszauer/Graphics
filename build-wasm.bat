@@ -19,7 +19,7 @@ C:/WASM/clang.exe -x c++ ^
     -o Graphics.wasm ^
     GraphicsWASM.cpp
 
-    C:/WASM/clang.exe -x c++ ^
+C:/WASM/clang.exe -x c++ ^
     --target=wasm32 ^
     -nostdinc ^
     -nostdlib ^
@@ -37,3 +37,10 @@ C:/WASM/clang.exe -x c++ ^
     -D _DEBUG=1 ^
     -o GraphicsSample.wasm ^
     WasmSample.cpp
+
+python C:/WASM/wasm-sourcemap.py ^
+    GraphicsSample.wasm -s ^
+    -o GraphicsSample.wasm.map ^
+    -u "./GraphicsSample.wasm.map" ^
+    -w GraphicsSample.debug.wasm ^
+    --dwarfdump=C:/WASM/llvm-dwarfdump.exe

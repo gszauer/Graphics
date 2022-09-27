@@ -100,7 +100,7 @@ class GraphicsManager {
 
     // Internal functions
     wasmGraphics_Log(ptr_loc, int_locLen, ptr_msg, int_msgLen) {
-        const str_message = GlobalGraphicsManager.decoder.decode(new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_msg, int_msgLen));
+        let str_message = GlobalGraphicsManager.decoder.decode(new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_msg, int_msgLen));
         const str_location = GlobalGraphicsManager.decoder.decode(new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_loc, int_locLen));
 
         if (str_message.length == 0) {
@@ -548,13 +548,16 @@ class GraphicsManager {
     }
 
     wasmGraphics_ShaderGetUniform(int_program, ptr_name, int_name_len) {
-        const array = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_name, int_name_len);
-        return GlobalGraphicsManager.gl.getUniformLocation(int_program, GlobalGraphicsManager.decoder.decode(array));
+        let program = GlobalGraphicsManager.shaders[int_program];
+        const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
+        let name = GlobalGraphicsManager.decoder.decode(array);
+        return GlobalGraphicsManager.gl.getUniformLocation(program, name);
     }
 
     wasmGraphics_ShaderGetAttribute(int_program, ptr_name, int_name_len) {
-        const array = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_name, int_name_len);
-        return GlobalGraphicsManager.gl.getAttribLocation(int_program, GlobalGraphicsManager.decoder.decode(array));
+        let program = GlobalGraphicsManager.shaders[int_program];
+        const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
+        return GlobalGraphicsManager.gl.getAttribLocation(program, GlobalGraphicsManager.decoder.decode(array));
     }
 
     wasmGraphics_BindVAO(int_vaoId) {
@@ -581,43 +584,43 @@ class GraphicsManager {
 
     wasmGraphics_DeviceSetUniform(int_type, int_slotId, int_count, ptr_data) {
         if (int_type == 0/* UniformType::Int1 */) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/);
             GlobalGraphicsManager.gl.Uniform1iv(int_slotId, int_count, data);
         }
         else if (int_type == 1/*UniformType::Int2*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 2);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 2);
             GlobalGraphicsManager.gl.uniform2iv(int_slotId, int_count, data);
         }
         else if (int_type == 2/*UniformType::Int3*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 3);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 3);
             GlobalGraphicsManager.gl.uniform3iv(int_slotId, int_count, data);
         }
         else if (int_type == 3/*UniformType::Int4*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(i32)*/ * 4);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 4);
             GlobalGraphicsManager.gl.uniform4iv(int_slotId, int_count, data);
         }
         else if (int_type == 4/*UniformType::Float1*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/);
             GlobalGraphicsManager.gl.uniform1fv(int_slotId, int_count, data);
         }
         else if (int_type == 5/*UniformType::Float2*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 2);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 2);
             GlobalGraphicsManager.gl.uniform2fv(int_slotId, int_count, data);
         }
         else if (int_type == 6/*UniformType::Float3*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 3);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 3);
             GlobalGraphicsManager.gl.uniform3fv(int_slotId, int_count, data);
         }
         else if (int_type == 7/*UniformType::Float4*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 4);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 4);
             GlobalGraphicsManager.gl.uniform4fv(int_slotId, int_count, data);
         }
         else if (int_type == 8/*UniformType::Float9*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 9);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 9);
             GlobalGraphicsManager.gl.uniformMatrix3fv(int_slotId, int_count, GlobalGraphicsManager.gl.FALSE, data);
         }
         else if (int_type == 9/*UniformType::Float16*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory_u8, ptr_data, int_count * 4/*sizeof(f32)*/ * 16);
+            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 16);
             GlobalGraphicsManager.gl.uniformMatrix4fv(int_slotId, int_count, GlobalGraphicsManager.gl.FALSE, data);
         }
     }
@@ -687,7 +690,7 @@ class GraphicsManager {
         let fragmentShader = GlobalGraphicsManager.gl.createShader(GlobalGraphicsManager.gl.FRAGMENT_SHADER);
         GlobalGraphicsManager.gl.shaderSource(fragmentShader, fragmentShaderStr);
         GlobalGraphicsManager.gl.compileShader(fragmentShader);
-        success = GlobalGraphicsManager.gl.getShaderParameter(vertexShader, GlobalGraphicsManager.gl.COMPILE_STATUS);
+        success = GlobalGraphicsManager.gl.getShaderParameter(fragmentShader, GlobalGraphicsManager.gl.COMPILE_STATUS);
         if (!success) {
             let message = GlobalGraphicsManager.gl.getShaderInfoLog(fragmentShader);
             console.log("Error compiling fragment shader: " + message);
@@ -698,7 +701,7 @@ class GraphicsManager {
         GlobalGraphicsManager.gl.attachShader(shaderProgram, vertexShader);
         GlobalGraphicsManager.gl.attachShader(shaderProgram, fragmentShader);
         GlobalGraphicsManager.gl.linkProgram(shaderProgram);
-        success = GlobalGraphicsManager.gl.getProgramParameter(GlobalGraphicsManager.gl.LINK_STATUS);
+        success = GlobalGraphicsManager.gl.getProgramParameter(shaderProgram, GlobalGraphicsManager.gl.LINK_STATUS);
         if (!success) {
             let message = GlobalGraphicsManager.gl.getProgramInfoLog(shaderProgram);
             console.log("Error linking shader: " + message);

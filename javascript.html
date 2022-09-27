@@ -20,16 +20,23 @@
 
             function LoadFileAsArrayBuffer(path, onFileLoaded) { 
                 const req = new XMLHttpRequest();
+                req.customCallbackTriggered = false;
                 req.open('GET', path, true);
                 req.responseType = "arraybuffer";
 
                 req.onload = (event) => {
                     const arrayBuffer = req.response; // Note: not req.responseText
                     if (arrayBuffer) {
-                        onFileLoaded(path, arrayBuffer);
+                        if (!req.customCallbackTriggered ) {
+                            req.customCallbackTriggered  = true;
+                            onFileLoaded(path, arrayBuffer);
+                        }
                     }
                     else {
-                        onFileLoaded(path, null);
+                        if (!req.customCallbackTriggered ) {
+                            req.customCallbackTriggered  = true;
+                            onFileLoaded(path, null);
+                        }
                     }
                 };
                 req.send(null);
@@ -82,7 +89,7 @@
                     for (let i = 0; i < int_len; ++i) {
                         dst_buffer[i] = src_buffer[i];
                     }
-                    return dest;
+                    return ptr_dest;
                 }
                 
                 // Create graphics device
@@ -92,6 +99,7 @@
 
                 // Init file loaders
                 let decoder = new TextDecoder();
+                let encoder = new TextEncoder(); // always utf-8
                 importObject.env.wasmFileLoaderLoadText = function(ptr_path, int_len, ptr_callback) {
                     let path = decoder.decode(new Uint8Array(allocator.memory.buffer, ptr_path, int_len));
                     LoadFileAsArrayBuffer(path, function(path, arrayBuffer) {
@@ -101,18 +109,25 @@
                             arrayBuffer = 0;
                         }
                         else {
-                            size = arrayBuffer.byteLength;
-                            ptr_data = allocator.Allocate(size);
+                            let bodyText = decoder.decode(new Uint8Array(arrayBuffer));
+                            bodyText = bodyText.replace("#version 330 core", "#version 300 es\nprecision highp float;");
 
-                            let dst_array = new Uint8Array(allocator.memory.buffer, ptr_data, size);
-                            let src_array = new Uint8Array(arrayBuffer);
+                            size = bodyText.length;
+                            ptr_data = allocator.Allocate(size + 1);
+
+                            let dst_array = new Uint8Array(allocator.memory.buffer, ptr_data, size + 1);
+                            let src_array = encoder.encode(bodyText);
 
                             for (let i = 0; i < size; ++i) {
                                 dst_array[i] = src_array[i];
                             }
+
+                            dst_array[size] = 0;
+                            let debugPeek = decoder.decode(new Uint8Array(allocator.memory.buffer, ptr_data, size + 1));
+                            let debugStop = 0;
                         }
                         
-                        program.instance.exports.FinishLoadingText(ptr_path, ptr_callback, ptr_data, size);
+                        program.instance.exports.FinishLoadingText(ptr_path, ptr_callback, ptr_data, size + 1);
                     });
                 }
                 importObject.env.wasmFileLoaderLoadMesh = function(ptr_path, int_len, ptr_callback) {
@@ -163,7 +178,7 @@
                     });
                 }
 
-                WebAssembly.instantiateStreaming(fetch('GraphicsSample.wasm'), importObject).then(prog => {
+                WebAssembly.instantiateStreaming(fetch('GraphicsSample.debug.wasm'), importObject).then(prog => {
                     program = prog;
                     allocator.InitializeWebAssembly(program.instance.exports);
 
