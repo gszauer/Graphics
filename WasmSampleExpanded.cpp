@@ -148,22 +148,13 @@ namespace Graphics {
 
  struct Index { // Uniform / Attribute Index
   u32 id;
+  u32 shader;
   bool valid;
 
-  inline Index(u32 _id = 0, bool _valid = false) {
+  inline Index(u32 _id = 0, bool _valid = false, u32 _shader = 0) {
    id = _id;
    valid = _valid;
-  }
-
-  inline Index(const Index& o) {
-   id = o.id;
-   valid = o.valid;
-  }
-
-  inline Index& operator=(const Index& o) {
-   id = o.id;
-   valid = o.valid;
-   return *this;
+   shader = _shader;
   }
  };
 
@@ -1513,6 +1504,7 @@ void Graphics::Device::Bind(Shader* shader) {
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
  Graphics::Internal::Assert(slot.valid, "On line: " "970" ", in file: " "./GraphicsWASM.cpp", "Setting invalid uniform");
  Graphics::Internal::Assert(slot.valid || (!slot.valid && slot.id != 0), "On line: " "971" ", in file: " "./GraphicsWASM.cpp", "Something messed with slot");
+ Graphics::Internal::Assert(slot.shader == mBoundProgram, "On line: " "972" ", in file: " "./GraphicsWASM.cpp", "Binding index to wrong shader");
  wasmGraphics_DeviceSetUniform((int)type, slot.id, count, data);
 }
 
@@ -1576,23 +1568,23 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
   if (mBoundTextures[i].texture != 0) { // Something is bound
    if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
     textureUnit = i;
-    Graphics::Internal::Assert(target == mBoundTextures[i].target, "On line: " "1035" ", in file: " "./GraphicsWASM.cpp", "Binding invalid texture types");
+    Graphics::Internal::Assert(target == mBoundTextures[i].target, "On line: " "1036" ", in file: " "./GraphicsWASM.cpp", "Binding invalid texture types");
     break;
    }
   }
   else if (firstFree == 33) {
-   Graphics::Internal::Assert(!mBoundTextures[i].index.valid, "On line: " "1040" ", in file: " "./GraphicsWASM.cpp", "free slot should not be valid");
+   Graphics::Internal::Assert(!mBoundTextures[i].index.valid, "On line: " "1041" ", in file: " "./GraphicsWASM.cpp", "free slot should not be valid");
    firstFree = i;
   }
  }
  if (textureUnit == 33) {
   textureUnit = firstFree;
   mBoundTextures[firstFree].index = uniformSlot;
-  Graphics::Internal::Assert(mBoundTextures[firstFree].index.valid, "On line: " "1047" ", in file: " "./GraphicsWASM.cpp", "Found invalid index");
+  Graphics::Internal::Assert(mBoundTextures[firstFree].index.valid, "On line: " "1048" ", in file: " "./GraphicsWASM.cpp", "Found invalid index");
   mBoundTextures[firstFree].target = target;
   mBoundTextures[firstFree].texture = &texture;
  }
- Graphics::Internal::Assert(textureUnit < 33, "On line: " "1051" ", in file: " "./GraphicsWASM.cpp", "Invalid texture unit");
+ Graphics::Internal::Assert(textureUnit < 33, "On line: " "1052" ", in file: " "./GraphicsWASM.cpp", "Invalid texture unit");
 
 
  GLenum enumTextureUnit = Internal::GetTextureUnit(textureUnit);
@@ -1691,11 +1683,11 @@ void Graphics::Shutdown(Device& device) {
  device.Bind(0);
  wasmGraphics_BindVAO(0);
 
- Graphics::Internal::Assert(device.mAllocatedTextures == 0, "On line: " "1150" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedBuffers == 0, "On line: " "1151" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedStates == 0, "On line: " "1152" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedShaders == 0, "On line: " "1153" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedFrameBuffers == 0, "On line: " "1154" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedTextures == 0, "On line: " "1151" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedBuffers == 0, "On line: " "1152" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedStates == 0, "On line: " "1153" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedShaders == 0, "On line: " "1154" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedFrameBuffers == 0, "On line: " "1155" ", in file: " "./GraphicsWASM.cpp", "Not all memory has been released");
 
  device.mPlatform.Request = 0;
  device.mPlatform.Release = 0;
@@ -1725,13 +1717,10 @@ Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
  for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
  int location = wasmGraphics_ShaderGetAttribute(mProgram, name, wasmLen);
- Index result;
- result.id = 0;
- result.valid = false;
+ Index result(0, false, mProgram);
 
  if (location >= 0) {
-  result.id = location;
-  result.valid = true;
+  result = Index(location, true, mProgram);
  }
 
  return result;
@@ -1742,14 +1731,10 @@ Graphics::Index Graphics::Shader::GetUniform(const char* name) {
  for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
  int location = wasmGraphics_ShaderGetUniform(mProgram, name, wasmLen);
-
- Index result;
- result.id = 0;
- result.valid = false;
+ Index result(0, false, mProgram);
 
  if (location >= 0) {
-  result.id = location;
-  result.valid = true;
+  result = Index(location, true, mProgram);
  }
 
  return result;
@@ -1874,8 +1859,8 @@ void Graphics::FrameBuffer::ResolveTo(FrameBuffer* target, Filter filter, bool c
  u32 width = GetWidth();
  u32 height = GetHeight();
 
- Graphics::Internal::Assert(GetWidth() == target->GetWidth(), "On line: " "1333" ", in file: " "./GraphicsWASM.cpp", "Invalid resolve");
- Graphics::Internal::Assert(GetHeight() == target->GetHeight(), "On line: " "1334" ", in file: " "./GraphicsWASM.cpp", "Invalid resolve");
+ Graphics::Internal::Assert(GetWidth() == target->GetWidth(), "On line: " "1327" ", in file: " "./GraphicsWASM.cpp", "Invalid resolve");
+ Graphics::Internal::Assert(GetHeight() == target->GetHeight(), "On line: " "1328" ", in file: " "./GraphicsWASM.cpp", "Invalid resolve");
 
  ResolveTo(target, filter, color, depth, 0, 0, width, height, 0, 0, width, height);
 }
@@ -5061,24 +5046,31 @@ Graphics::VertexLayout* gLightmapMesh;
 Graphics::VertexLayout* gLightmapSkullLayout;
 Graphics::VertexLayout* gLightmapPlaneLayout;
 
-Graphics::Shader* gLitShader;
-Graphics::Shader* gLitShaderPCM;
-Graphics::VertexLayout* gLitSkullMesh;
-Graphics::VertexLayout* gLitPlaneMesh;
+
+struct PCMState {
+ Graphics::Shader* shader;
+ Graphics::Index modelIndex;
+ Graphics::Index shadowIndex;
+ Graphics::Index viewIndex;
+ Graphics::Index projectionIndex;
+ Graphics::Index albedoIndex;
+ Graphics::Index lightmapIndex;
+ Graphics::Index normalIndex;
+ Graphics::Index lightDirection;
+ Graphics::Index lightColor;
+ Graphics::Index viewPos;
+ Graphics::Index ambientStrength;
+ Graphics::Index ambientOnly;
+ Graphics::VertexLayout* skullMesh;
+ Graphics::VertexLayout* planeMesh;
+};
+
+PCMState* gPCMState;
+PCMState* gLitNoPCM;
+PCMState* gLitWithPCM;
+
 Graphics::Texture* gPlaneTextureAlbedo;
 Graphics::Texture* gPlaneTextureNormal;
-Graphics::Index gLitModelIndex;
-Graphics::Index gLitShadowIndex;
-Graphics::Index gLitViewIndex;
-Graphics::Index gLitProjectionIndex;
-Graphics::Index gLitAlbedoIndex;
-Graphics::Index gLitLightmapIndex;
-Graphics::Index gLitNormalIndex;
-Graphics::Index gLitLightDirection;
-Graphics::Index gLitLightColor;
-Graphics::Index gLitViewPos;
-Graphics::Index gLitAmbientStrength;
-Graphics::Index gLitAmbientOnly;
 
 Graphics::Shader* gHemiShader;
 Graphics::VertexLayout* gHemiSkullMesh;
@@ -5110,7 +5102,6 @@ float lightDir;
 bool enablePCM;
 bool lastPCM;
 float ambientOnly;
-Graphics::Shader* gPCMShader;
 
 TextFile* blit_depth_vShader;
 TextFile* blit_depth_fShader;
@@ -5151,7 +5142,7 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
  gLightmapDepth = gfx->CreateTexture(Graphics::TextureFormat::Depth, 512, 512, 0, Graphics::TextureFormat::Depth, false);
  //gLightmapFBO->AttachColor(*gLightmapColor);
  gLightmapFBO->AttachDepth(*gLightmapDepth);
- Graphics::Internal::Assert(gLightmapFBO->IsValid(), "On line: " "121" ", in file: " "./sample.cpp", "Invalid fbo");
+ Graphics::Internal::Assert(gLightmapFBO->IsValid(), "On line: " "127" ", in file: " "./sample.cpp", "Invalid fbo");
 
  numFilesToLoad = 15;
  LoadText("assets/blit-depth.vert", [](const char* path, TextFile* file) {
@@ -5166,9 +5157,9 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
   });
  LoadText("assets/lightmap.vert", [](const char* path, TextFile* file) {
   lightmap_vShader = file;
-  Graphics::Internal::Assert(lightmap_vShader->length != 0, "On line: " "136" ", in file: " "./sample.cpp", "Empty lightmap.vert");
-  Graphics::Internal::Assert(lightmap_vShader->text != 0, "On line: " "137" ", in file: " "./sample.cpp", "No text pointer in lightmap.vert");
-  Graphics::Internal::Assert(*lightmap_vShader->text != 0, "On line: " "138" ", in file: " "./sample.cpp", "Empty string in lightmap.vert");
+  Graphics::Internal::Assert(lightmap_vShader->length != 0, "On line: " "142" ", in file: " "./sample.cpp", "Empty lightmap.vert");
+  Graphics::Internal::Assert(lightmap_vShader->text != 0, "On line: " "143" ", in file: " "./sample.cpp", "No text pointer in lightmap.vert");
+  Graphics::Internal::Assert(*lightmap_vShader->text != 0, "On line: " "144" ", in file: " "./sample.cpp", "Empty string in lightmap.vert");
   //GraphicsAssert(*lightmap_vShader->text == 0, file->text );
   numFilesToLoad -= 1;
 
@@ -5234,9 +5225,9 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 }
 
 void FinishInitializing(Graphics::Device* gfx) {
- Graphics::Internal::Assert(lightmap_vShader->length != 0, "On line: " "204" ", in file: " "./sample.cpp", "2c Empty lightmap.vert");
- Graphics::Internal::Assert(lightmap_vShader->text != 0, "On line: " "205" ", in file: " "./sample.cpp", "2 No text pointer in lightmap.vert");
- Graphics::Internal::Assert(*lightmap_vShader->text != 0, "On line: " "206" ", in file: " "./sample.cpp", "2 Empty string in lightmap.vert");
+ Graphics::Internal::Assert(lightmap_vShader->length != 0, "On line: " "210" ", in file: " "./sample.cpp", "2c Empty lightmap.vert");
+ Graphics::Internal::Assert(lightmap_vShader->text != 0, "On line: " "211" ", in file: " "./sample.cpp", "2 No text pointer in lightmap.vert");
+ Graphics::Internal::Assert(*lightmap_vShader->text != 0, "On line: " "212" ", in file: " "./sample.cpp", "2 Empty string in lightmap.vert");
  gLightmapDrawShader = gfx->CreateShader(lightmap_vShader->text, lightmap_fShader->text);
  ReleaseText(lightmap_vShader);
  ReleaseText(lightmap_fShader);
@@ -5272,27 +5263,56 @@ void FinishInitializing(Graphics::Device* gfx) {
 
  /// Lit shader
 
- gLitShader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
+ //PCMState* gPCMState;
+ //PCMState* gLitNoPCM;
+ //PCMState* gLitWithPCM;
+
+ gLitNoPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
+ gLitWithPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
+ gPCMState = gLitWithPCM;
+
+ gLitNoPCM->shader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
  ReleaseText(lit_fShader);
 
- gLitShaderPCM = gfx->CreateShader(lit_vShader->text, lit_pcm_fShader->text);
- gPCMShader = gLitShaderPCM;
+ gLitWithPCM->shader = gfx->CreateShader(lit_vShader->text, lit_pcm_fShader->text);
  ReleaseText(lit_vShader);
  ReleaseText(lit_pcm_fShader);
 
- gLitModelIndex = gLitShader->GetUniform("model");
- gLitShadowIndex = gLitShader->GetUniform("shadow");
- gLitViewIndex = gLitShader->GetUniform("view");
- gLitProjectionIndex = gLitShader->GetUniform("projection");
- gLitAlbedoIndex = gLitShader->GetUniform("uColorSpec");
- gLitLightmapIndex = gLitShader->GetUniform("uShadowMap");
+ gLitNoPCM->modelIndex = gLitNoPCM->shader->GetUniform("model");
+ gLitWithPCM->modelIndex = gLitWithPCM->shader->GetUniform("model");
 
- gLitNormalIndex = gLitShader->GetUniform("uNormal");
- gLitLightDirection = gLitShader->GetUniform("LightDirection");
- gLitLightColor = gLitShader->GetUniform("LightColor");
- gLitViewPos = gLitShader->GetUniform("ViewPos");
- gLitAmbientStrength = gLitShader->GetUniform("AmbientStrength");
- gLitAmbientOnly = gLitShader->GetUniform("AmbientOnly");
+ gLitNoPCM->shadowIndex = gLitNoPCM->shader->GetUniform("shadow");
+ gLitWithPCM->shadowIndex = gLitWithPCM->shader->GetUniform("shadow");
+
+ gLitNoPCM->viewIndex = gLitNoPCM->shader->GetUniform("view");
+ gLitWithPCM->viewIndex = gLitWithPCM->shader->GetUniform("view");
+
+ gLitNoPCM->projectionIndex = gLitNoPCM->shader->GetUniform("projection");
+ gLitWithPCM->projectionIndex = gLitWithPCM->shader->GetUniform("projection");
+
+ gLitNoPCM->albedoIndex = gLitNoPCM->shader->GetUniform("uColorSpec");
+ gLitWithPCM->albedoIndex = gLitWithPCM->shader->GetUniform("uColorSpec");
+
+ gLitNoPCM->lightmapIndex = gLitNoPCM->shader->GetUniform("uShadowMap");
+ gLitWithPCM->lightmapIndex = gLitWithPCM->shader->GetUniform("uShadowMap");
+
+ gLitNoPCM->normalIndex = gLitNoPCM->shader->GetUniform("uNormal");
+ gLitWithPCM->normalIndex = gLitWithPCM->shader->GetUniform("uNormal");
+
+ gLitNoPCM->lightDirection = gLitNoPCM->shader->GetUniform("LightDirection");
+ gLitWithPCM->lightDirection = gLitWithPCM->shader->GetUniform("LightDirection");
+
+ gLitNoPCM->lightColor = gLitNoPCM->shader->GetUniform("LightColor");
+ gLitWithPCM->lightColor = gLitWithPCM->shader->GetUniform("LightColor");
+
+ gLitNoPCM->viewPos = gLitNoPCM->shader->GetUniform("ViewPos");
+ gLitWithPCM->viewPos = gLitWithPCM->shader->GetUniform("ViewPos");
+
+ gLitNoPCM->ambientStrength = gLitNoPCM->shader->GetUniform("AmbientStrength");
+ gLitWithPCM->ambientStrength = gLitWithPCM->shader->GetUniform("AmbientStrength");
+
+ gLitNoPCM->ambientOnly = gLitNoPCM->shader->GetUniform("AmbientOnly");
+ gLitWithPCM->ambientOnly = gLitWithPCM->shader->GetUniform("AmbientOnly");
 
  /// Initialize skull
 
@@ -5339,12 +5359,27 @@ void FinishInitializing(Graphics::Device* gfx) {
  gBuffers[6] = normals;
  gBuffers[7] = tangents;
 
- gLitPlaneMesh = gfx->CreateVertexLayout();
- gLitPlaneMesh->Set(attribPos, *positions, posView);
- gLitPlaneMesh->Set(attribNorm, *normals, normView);
- gLitPlaneMesh->Set(attribTan, *tangents, tanView);
- gLitPlaneMesh->Set(attribUv, *texCoords, texView);
- gLitPlaneMesh->SetUserData(planeMesh->numPos);
+ gLitNoPCM->planeMesh = gfx->CreateVertexLayout();
+ attribPos = gLitNoPCM->shader->GetAttribute("aPos");
+ attribUv = gLitNoPCM->shader->GetAttribute("aTexCoord");
+ attribNorm = gLitNoPCM->shader->GetAttribute("aNorm");
+ attribTan = gLitNoPCM->shader->GetAttribute("aTan");
+ gLitNoPCM->planeMesh->Set(attribPos, *positions, posView);
+ gLitNoPCM->planeMesh->Set(attribNorm, *normals, normView);
+ gLitNoPCM->planeMesh->Set(attribTan, *tangents, tanView);
+ gLitNoPCM->planeMesh->Set(attribUv, *texCoords, texView);
+ gLitNoPCM->planeMesh->SetUserData(planeMesh->numPos);
+
+ gLitWithPCM->planeMesh = gfx->CreateVertexLayout();
+ attribPos = gLitWithPCM->shader->GetAttribute("aPos");
+ attribUv = gLitWithPCM->shader->GetAttribute("aTexCoord");
+ attribNorm = gLitWithPCM->shader->GetAttribute("aNorm");
+ attribTan = gLitWithPCM->shader->GetAttribute("aTan");
+ gLitWithPCM->planeMesh->Set(attribPos, *positions, posView);
+ gLitWithPCM->planeMesh->Set(attribNorm, *normals, normView);
+ gLitWithPCM->planeMesh->Set(attribTan, *tangents, tanView);
+ gLitWithPCM->planeMesh->Set(attribUv, *texCoords, texView);
+ gLitWithPCM->planeMesh->SetUserData(planeMesh->numPos);
 
  gLightmapPlaneLayout->Set(lightmapPositionAttrib, *positions, posView);
  gLightmapPlaneLayout->SetUserData(planeMesh->numPos);
@@ -5376,20 +5411,30 @@ void FinishInitializing(Graphics::Device* gfx) {
   tanView = Graphics::BufferView(3, sizeof(float) * 11, Graphics::BufferType::Float32, sizeof(float) * 6);
   texView = Graphics::BufferView(2, sizeof(float) * 11, Graphics::BufferType::Float32, sizeof(float) * 9);
 
-  attribPos = gLitShader->GetAttribute("aPos");
-  attribUv = gLitShader->GetAttribute("aTexCoord");
-  attribNorm = gLitShader->GetAttribute("aNorm");
-  attribTan = gLitShader->GetAttribute("aTan");
-
-  gLitSkullMesh = gfx->CreateVertexLayout();
+  gLitNoPCM->skullMesh = gfx->CreateVertexLayout();
+  attribPos = gLitNoPCM->shader->GetAttribute("aPos");
+  attribUv = gLitNoPCM->shader->GetAttribute("aTexCoord");
+  attribNorm = gLitNoPCM->shader->GetAttribute("aNorm");
+  attribTan = gLitNoPCM->shader->GetAttribute("aTan");
   Graphics::Buffer* compositeBuff = gfx->CreateBuffer(float_arr, arr_size * sizeof(float));
-  gLitSkullMesh->Set(attribPos, *compositeBuff, posView);
-  gLitSkullMesh->Set(attribNorm, *compositeBuff, normView);
-  gLitSkullMesh->Set(attribTan, *compositeBuff, tanView);
-  gLitSkullMesh->Set(attribUv, *compositeBuff, texView);
-  gLitSkullMesh->SetUserData(skullMesh->numPos);
+  gLitNoPCM->skullMesh->Set(attribPos, *compositeBuff, posView);
+  gLitNoPCM->skullMesh->Set(attribNorm, *compositeBuff, normView);
+  gLitNoPCM->skullMesh->Set(attribTan, *compositeBuff, tanView);
+  gLitNoPCM->skullMesh->Set(attribUv, *compositeBuff, texView);
+  gLitNoPCM->skullMesh->SetUserData(skullMesh->numPos);
   gBuffers[8] = compositeBuff;
 
+  gLitWithPCM->skullMesh = gfx->CreateVertexLayout();
+  attribPos = gLitWithPCM->shader->GetAttribute("aPos");
+  attribUv = gLitWithPCM->shader->GetAttribute("aTexCoord");
+  attribNorm = gLitWithPCM->shader->GetAttribute("aNorm");
+  attribTan = gLitWithPCM->shader->GetAttribute("aTan");
+  gLitWithPCM->skullMesh->Set(attribPos, *compositeBuff, posView);
+  gLitWithPCM->skullMesh->Set(attribNorm, *compositeBuff, normView);
+  gLitWithPCM->skullMesh->Set(attribTan, *compositeBuff, tanView);
+  gLitWithPCM->skullMesh->Set(attribUv, *compositeBuff, texView);
+  gLitWithPCM->skullMesh->SetUserData(skullMesh->numPos);
+  gBuffers[8] = compositeBuff;
 
   gfx->Release(float_arr);
  }
@@ -5441,7 +5486,7 @@ void FinishInitializing(Graphics::Device* gfx) {
  gfx->SetDepthState(true);
 
  gLightmapMVP = gLightmapDrawShader->GetUniform("mvp");
- Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "411" ", in file: " "./sample.cpp", "INvalid lightmap mvp?");
+ Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "471" ", in file: " "./sample.cpp", "INvalid lightmap mvp?");
 
  isFinishedInitializing = true;
 }
@@ -5458,18 +5503,18 @@ void Update(Graphics::Device* g, float deltaTime) {
  if (!isFinishedInitializing) {
   FinishInitializing(g);
   isFinishedInitializing = true;
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "428" ", in file: " "./sample.cpp", "(3) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "488" ", in file: " "./sample.cpp", "(3) INvalid lightmap mvp?");
   return;
  }
- Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "431" ", in file: " "./sample.cpp", "(4) INvalid lightmap mvp?");
+ Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "491" ", in file: " "./sample.cpp", "(4) INvalid lightmap mvp?");
 
  if (lastPCM != enablePCM) {
   gLightmapDepth->SetPCM(enablePCM);
   if (enablePCM) {
-   gPCMShader = gLitShaderPCM;
+   gPCMState = gLitWithPCM;
   }
   else {
-   gPCMShader = gLitShader;
+   gPCMState = gLitNoPCM;
   }
   lastPCM = enablePCM;
  }
@@ -5501,10 +5546,11 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
  if (!isFinishedInitializing) {
   return;
  }
+
  IsRunning = false;
 
 
- Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "474" ", in file: " "./sample.cpp", "(5) INvalid lightmap mvp?");
+ Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "535" ", in file: " "./sample.cpp", "(5) INvalid lightmap mvp?");
 
  float camX = FastSin(camTime) * cameraRadius;
  float camZ = FastCos(camTime) * cameraRadius;
@@ -5548,21 +5594,21 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 
   gfx->Bind(gLightmapDrawShader);
   mat4 mvp = ShadowProjection * ShadowView * model1;
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "518" ", in file: " "./sample.cpp", "(2) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "579" ", in file: " "./sample.cpp", "(2) INvalid lightmap mvp?");
   gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "520" ", in file: " "./sample.cpp", "(a) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "581" ", in file: " "./sample.cpp", "(a) INvalid lightmap mvp?");
   gfx->Draw(*gLightmapSkullLayout, Graphics::DrawMode::Triangles, 0, gLightmapSkullLayout->GetUserData());
 
   mvp = ShadowProjection* ShadowView* model2;
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "524" ", in file: " "./sample.cpp", "(b) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "585" ", in file: " "./sample.cpp", "(b) INvalid lightmap mvp?");
   gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "526" ", in file: " "./sample.cpp", "(c) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "587" ", in file: " "./sample.cpp", "(c) INvalid lightmap mvp?");
   gfx->Draw(*gLightmapSkullLayout, Graphics::DrawMode::Triangles, 0, gLightmapSkullLayout->GetUserData());
 
   mvp = ShadowProjection * ShadowView * model3;
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "530" ", in file: " "./sample.cpp", "(d) INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "591" ", in file: " "./sample.cpp", "(d) INvalid lightmap mvp?");
   gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
-  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "532" ", in file: " "./sample.cpp", "(e INvalid lightmap mvp?");
+  Graphics::Internal::Assert(gLightmapMVP.valid, "On line: " "593" ", in file: " "./sample.cpp", "(e INvalid lightmap mvp?");
   //gfx->Draw(*gLightmapPlaneLayout, Graphics::DrawMode::Triangles, 0, gLightmapPlaneLayout->GetUserData());
 
   gfx->SetRenderTarget(0);
@@ -5592,33 +5638,32 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
   gfx->Bind(gProjectionIndex, Graphics::UniformType::Float16, projection.v);
   gfx->Draw(*gHemiSkullMesh, Graphics::DrawMode::Triangles, 0, gHemiSkullMesh->GetUserData());
 
-  gfx->Bind(gPCMShader);
+  gfx->Bind(gPCMState->shader);
 
-  gfx->Bind(gLitModelIndex, Graphics::UniformType::Float16, model2.v);
-  gfx->Bind(gLitShadowIndex, Graphics::UniformType::Float16, shadowMatrix2.v);
-  gfx->Bind(gLitViewIndex, Graphics::UniformType::Float16, view.v);
-  gfx->Bind(gLitProjectionIndex, Graphics::UniformType::Float16, projection.v);
+  gfx->Bind(gPCMState->modelIndex, Graphics::UniformType::Float16, model2.v);
+  gfx->Bind(gPCMState->shadowIndex, Graphics::UniformType::Float16, shadowMatrix2.v);
+  gfx->Bind(gPCMState->viewIndex, Graphics::UniformType::Float16, view.v);
+  gfx->Bind(gPCMState->projectionIndex, Graphics::UniformType::Float16, projection.v);
 
-  gfx->Bind(gLitAlbedoIndex, *gSkullTextureAlbedo, sampler);
-  gfx->Bind(gLitLightmapIndex, *gLightmapDepth, depthSampler);
-  gfx->Bind(gLitNormalIndex, *gSkullTextureNormal, sampler);
-  gfx->Bind(gLitLightDirection, Graphics::UniformType::Float3, lightDir.v);
-  gfx->Bind(gLitLightColor, Graphics::UniformType::Float3, lightColor.v);
-  gfx->Bind(gLitViewPos, Graphics::UniformType::Float3, cameraPos.v);
-  gfx->Bind(gLitAmbientStrength, Graphics::UniformType::Float1, &ambient);
-  gfx->Bind(gLitAmbientOnly, Graphics::UniformType::Float1, &ambientOnly);
+  gfx->Bind(gPCMState->albedoIndex, *gSkullTextureAlbedo, sampler);
+  gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
+  gfx->Bind(gPCMState->normalIndex, *gSkullTextureNormal, sampler);
+  gfx->Bind(gPCMState->lightDirection, Graphics::UniformType::Float3, lightDir.v);
+  gfx->Bind(gPCMState->lightColor, Graphics::UniformType::Float3, lightColor.v);
+  gfx->Bind(gPCMState->viewPos, Graphics::UniformType::Float3, cameraPos.v);
+  gfx->Bind(gPCMState->ambientStrength, Graphics::UniformType::Float1, &ambient);
+  gfx->Bind(gPCMState->ambientOnly, Graphics::UniformType::Float1, &ambientOnly);
 
-
-  gfx->Draw(*gLitSkullMesh, Graphics::DrawMode::Triangles, 0, gLitSkullMesh->GetUserData());
+  gfx->Draw(*gPCMState->skullMesh, Graphics::DrawMode::Triangles, 0, gPCMState->skullMesh->GetUserData());
 
   ambient = 0.0f;
-  gfx->Bind(gLitModelIndex, Graphics::UniformType::Float16, model3.v);
-  gfx->Bind(gLitShadowIndex, Graphics::UniformType::Float16, shadowMatrix3.v);
-  gfx->Bind(gLitAlbedoIndex, *gPlaneTextureAlbedo, sampler);
-  gfx->Bind(gLitLightmapIndex, *gLightmapDepth, depthSampler);
-  gfx->Bind(gLitNormalIndex, *gPlaneTextureNormal, sampler);
-  gfx->Bind(gLitAmbientStrength, Graphics::UniformType::Float1, &ambient);
-  gfx->Draw(*gLitPlaneMesh, Graphics::DrawMode::Triangles, 0, gLitPlaneMesh->GetUserData());
+  gfx->Bind(gPCMState->modelIndex, Graphics::UniformType::Float16, model3.v);
+  gfx->Bind(gPCMState->shadowIndex, Graphics::UniformType::Float16, shadowMatrix3.v);
+  gfx->Bind(gPCMState->albedoIndex, *gPlaneTextureAlbedo, sampler);
+  gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
+  gfx->Bind(gPCMState->normalIndex, *gPlaneTextureNormal, sampler);
+  gfx->Bind(gPCMState->ambientStrength, Graphics::UniformType::Float1, &ambient);
+  gfx->Draw(*gPCMState->planeMesh, Graphics::DrawMode::Triangles, 0, gPCMState->planeMesh->GetUserData());
  }
 
  if (ShowDepth) { // Draw debug
@@ -5654,16 +5699,21 @@ void Shutdown(Graphics::Device* gfx) {
  gfx->Destroy(gLightmapDepth);
  gfx->Destroy(gLightmapBlitShader);
  gfx->Destroy(gLightmapDrawShader);
- gfx->Destroy(gLitShader);
- gfx->Destroy(gLitShaderPCM);
- gfx->Destroy(gLitSkullMesh);
- gfx->Destroy(gLitPlaneMesh);
+ gfx->Destroy(gLitNoPCM->shader);
+ gfx->Destroy(gLitWithPCM->shader);
+ gfx->Destroy(gLitNoPCM->skullMesh);
+ gfx->Destroy(gLitWithPCM->skullMesh);
+ gfx->Destroy(gLitNoPCM->planeMesh);
+ gfx->Destroy(gLitWithPCM->planeMesh);
  gfx->Destroy(gPlaneTextureAlbedo);
  gfx->Destroy(gPlaneTextureNormal);
  gfx->Destroy(gHemiShader);
  gfx->Destroy(gHemiSkullMesh);
  gfx->Destroy(gSkullTextureAlbedo);
  gfx->Destroy(gSkullTextureNormal);
+
+ gfx->Release(gLitNoPCM);
+ gfx->Release(gLitWithPCM);
 
  Graphics::Shutdown(*gfx);
  gfx = 0;

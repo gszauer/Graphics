@@ -141,22 +141,13 @@ namespace Graphics {
 
 	struct Index { // Uniform / Attribute Index
 		u32 id;
+		u32 shader;
 		bool valid;
 
-		inline Index(u32 _id = 0, bool _valid = false) {
+		inline Index(u32 _id = 0, bool _valid = false, u32 _shader = 0) {
 			id = _id;
 			valid = _valid;
-		}
-
-		inline Index(const Index& o) {
-			id = o.id;
-			valid = o.valid;
-		}
-
-		inline Index& operator=(const Index& o) {
-			id = o.id;
-			valid = o.valid;
-			return *this;
+			shader = _shader;
 		}
 	};
 

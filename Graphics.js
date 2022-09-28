@@ -614,6 +614,9 @@ class GraphicsManager {
         }
 
         let program = GlobalGraphicsManager.currentlyBoundShader;
+        if (int_uniformSlot >= program.uniformIndexObjects.length) {
+            console.log("Trying to access invalid texture");
+        }
         let slot = program.uniformIndexObjects[int_uniformSlot];
 	    GlobalGraphicsManager.gl.uniform1i(slot, int_textureId);
     }

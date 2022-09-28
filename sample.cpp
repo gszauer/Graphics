@@ -17,24 +17,31 @@ Graphics::VertexLayout*	gLightmapMesh;
 Graphics::VertexLayout* gLightmapSkullLayout;
 Graphics::VertexLayout* gLightmapPlaneLayout;
 
-Graphics::Shader* gLitShader;
-Graphics::Shader* gLitShaderPCM;
-Graphics::VertexLayout* gLitSkullMesh;
-Graphics::VertexLayout* gLitPlaneMesh;
+
+struct PCMState {
+	Graphics::Shader* shader;
+	Graphics::Index modelIndex;
+	Graphics::Index shadowIndex;
+	Graphics::Index viewIndex;
+	Graphics::Index projectionIndex;
+	Graphics::Index albedoIndex;
+	Graphics::Index lightmapIndex;
+	Graphics::Index normalIndex;
+	Graphics::Index lightDirection;
+	Graphics::Index lightColor;
+	Graphics::Index viewPos;
+	Graphics::Index ambientStrength;
+	Graphics::Index ambientOnly;
+	Graphics::VertexLayout* skullMesh;
+	Graphics::VertexLayout* planeMesh;
+};
+
+PCMState* gPCMState;
+PCMState* gLitNoPCM;
+PCMState* gLitWithPCM;
+
 Graphics::Texture* gPlaneTextureAlbedo;
 Graphics::Texture* gPlaneTextureNormal;
-Graphics::Index gLitModelIndex;
-Graphics::Index gLitShadowIndex;
-Graphics::Index gLitViewIndex;
-Graphics::Index gLitProjectionIndex;
-Graphics::Index gLitAlbedoIndex;
-Graphics::Index gLitLightmapIndex;
-Graphics::Index gLitNormalIndex;
-Graphics::Index gLitLightDirection;
-Graphics::Index gLitLightColor;
-Graphics::Index gLitViewPos;
-Graphics::Index gLitAmbientStrength;
-Graphics::Index gLitAmbientOnly;
 
 Graphics::Shader* gHemiShader;
 Graphics::VertexLayout* gHemiSkullMesh;
@@ -66,7 +73,6 @@ float lightDir;
 bool enablePCM;
 bool lastPCM;
 float ambientOnly;
-Graphics::Shader* gPCMShader;
 
 TextFile* blit_depth_vShader;
 TextFile* blit_depth_fShader;
@@ -238,28 +244,57 @@ void FinishInitializing(Graphics::Device* gfx) {
 	gBuffers[9] = lightmapMesh;
 
 	/// Lit shader
-	
-	gLitShader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
+
+	//PCMState* gPCMState;
+	//PCMState* gLitNoPCM;
+	//PCMState* gLitWithPCM;
+
+	gLitNoPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
+	gLitWithPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
+	gPCMState = gLitWithPCM;
+
+	gLitNoPCM->shader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
 	ReleaseText(lit_fShader);
 
-	gLitShaderPCM = gfx->CreateShader(lit_vShader->text, lit_pcm_fShader->text);
-	gPCMShader = gLitShaderPCM;
+	gLitWithPCM->shader = gfx->CreateShader(lit_vShader->text, lit_pcm_fShader->text);
 	ReleaseText(lit_vShader);
 	ReleaseText(lit_pcm_fShader);
 
-	gLitModelIndex = gLitShader->GetUniform("model");
-	gLitShadowIndex = gLitShader->GetUniform("shadow");
-	gLitViewIndex = gLitShader->GetUniform("view");
-	gLitProjectionIndex = gLitShader->GetUniform("projection");
-	gLitAlbedoIndex = gLitShader->GetUniform("uColorSpec");
-	gLitLightmapIndex = gLitShader->GetUniform("uShadowMap");
+	gLitNoPCM->modelIndex = gLitNoPCM->shader->GetUniform("model");
+	gLitWithPCM->modelIndex = gLitWithPCM->shader->GetUniform("model");
+
+	gLitNoPCM->shadowIndex = gLitNoPCM->shader->GetUniform("shadow");
+	gLitWithPCM->shadowIndex = gLitWithPCM->shader->GetUniform("shadow");
+
+	gLitNoPCM->viewIndex = gLitNoPCM->shader->GetUniform("view");
+	gLitWithPCM->viewIndex = gLitWithPCM->shader->GetUniform("view");
+
+	gLitNoPCM->projectionIndex = gLitNoPCM->shader->GetUniform("projection");
+	gLitWithPCM->projectionIndex = gLitWithPCM->shader->GetUniform("projection");
+
+	gLitNoPCM->albedoIndex = gLitNoPCM->shader->GetUniform("uColorSpec");
+	gLitWithPCM->albedoIndex = gLitWithPCM->shader->GetUniform("uColorSpec");
+
+	gLitNoPCM->lightmapIndex = gLitNoPCM->shader->GetUniform("uShadowMap");
+	gLitWithPCM->lightmapIndex = gLitWithPCM->shader->GetUniform("uShadowMap");
 	
-	gLitNormalIndex = gLitShader->GetUniform("uNormal");
-	gLitLightDirection = gLitShader->GetUniform("LightDirection");
-	gLitLightColor = gLitShader->GetUniform("LightColor");
-	gLitViewPos = gLitShader->GetUniform("ViewPos");
-	gLitAmbientStrength = gLitShader->GetUniform("AmbientStrength");
-	gLitAmbientOnly = gLitShader->GetUniform("AmbientOnly");
+	gLitNoPCM->normalIndex = gLitNoPCM->shader->GetUniform("uNormal");
+	gLitWithPCM->normalIndex = gLitWithPCM->shader->GetUniform("uNormal");
+
+	gLitNoPCM->lightDirection = gLitNoPCM->shader->GetUniform("LightDirection");
+	gLitWithPCM->lightDirection = gLitWithPCM->shader->GetUniform("LightDirection");
+
+	gLitNoPCM->lightColor = gLitNoPCM->shader->GetUniform("LightColor");
+	gLitWithPCM->lightColor = gLitWithPCM->shader->GetUniform("LightColor");
+
+	gLitNoPCM->viewPos = gLitNoPCM->shader->GetUniform("ViewPos");
+	gLitWithPCM->viewPos = gLitWithPCM->shader->GetUniform("ViewPos");
+
+	gLitNoPCM->ambientStrength = gLitNoPCM->shader->GetUniform("AmbientStrength");
+	gLitWithPCM->ambientStrength = gLitWithPCM->shader->GetUniform("AmbientStrength");
+
+	gLitNoPCM->ambientOnly = gLitNoPCM->shader->GetUniform("AmbientOnly");
+	gLitWithPCM->ambientOnly = gLitWithPCM->shader->GetUniform("AmbientOnly");
 
 	/// Initialize skull
 
@@ -306,12 +341,27 @@ void FinishInitializing(Graphics::Device* gfx) {
 	gBuffers[6] = normals;
 	gBuffers[7] = tangents;
 
-	gLitPlaneMesh = gfx->CreateVertexLayout();
-	gLitPlaneMesh->Set(attribPos, *positions, posView);
-	gLitPlaneMesh->Set(attribNorm, *normals, normView);
-	gLitPlaneMesh->Set(attribTan, *tangents, tanView);
-	gLitPlaneMesh->Set(attribUv, *texCoords, texView);
-	gLitPlaneMesh->SetUserData(planeMesh->numPos);
+	gLitNoPCM->planeMesh = gfx->CreateVertexLayout();
+	attribPos = gLitNoPCM->shader->GetAttribute("aPos");
+	attribUv = gLitNoPCM->shader->GetAttribute("aTexCoord");
+	attribNorm = gLitNoPCM->shader->GetAttribute("aNorm");
+	attribTan = gLitNoPCM->shader->GetAttribute("aTan");
+	gLitNoPCM->planeMesh->Set(attribPos, *positions, posView);
+	gLitNoPCM->planeMesh->Set(attribNorm, *normals, normView);
+	gLitNoPCM->planeMesh->Set(attribTan, *tangents, tanView);
+	gLitNoPCM->planeMesh->Set(attribUv, *texCoords, texView);
+	gLitNoPCM->planeMesh->SetUserData(planeMesh->numPos);
+
+	gLitWithPCM->planeMesh = gfx->CreateVertexLayout();
+	attribPos = gLitWithPCM->shader->GetAttribute("aPos");
+	attribUv = gLitWithPCM->shader->GetAttribute("aTexCoord");
+	attribNorm = gLitWithPCM->shader->GetAttribute("aNorm");
+	attribTan = gLitWithPCM->shader->GetAttribute("aTan");
+	gLitWithPCM->planeMesh->Set(attribPos, *positions, posView);
+	gLitWithPCM->planeMesh->Set(attribNorm, *normals, normView);
+	gLitWithPCM->planeMesh->Set(attribTan, *tangents, tanView);
+	gLitWithPCM->planeMesh->Set(attribUv, *texCoords, texView);
+	gLitWithPCM->planeMesh->SetUserData(planeMesh->numPos);
 
 	gLightmapPlaneLayout->Set(lightmapPositionAttrib, *positions, posView);
 	gLightmapPlaneLayout->SetUserData(planeMesh->numPos);
@@ -343,20 +393,30 @@ void FinishInitializing(Graphics::Device* gfx) {
 		tanView = Graphics::BufferView(3, sizeof(float) * 11, Graphics::BufferType::Float32, sizeof(float) * 6);
 		texView = Graphics::BufferView(2, sizeof(float) * 11, Graphics::BufferType::Float32, sizeof(float) * 9);
 
-		attribPos = gLitShader->GetAttribute("aPos");
-		attribUv = gLitShader->GetAttribute("aTexCoord");
-		attribNorm = gLitShader->GetAttribute("aNorm");
-		attribTan = gLitShader->GetAttribute("aTan");
-
-		gLitSkullMesh = gfx->CreateVertexLayout();
+		gLitNoPCM->skullMesh = gfx->CreateVertexLayout();
+		attribPos = gLitNoPCM->shader->GetAttribute("aPos");
+		attribUv = gLitNoPCM->shader->GetAttribute("aTexCoord");
+		attribNorm = gLitNoPCM->shader->GetAttribute("aNorm");
+		attribTan = gLitNoPCM->shader->GetAttribute("aTan");
 		Graphics::Buffer* compositeBuff = gfx->CreateBuffer(float_arr, arr_size * sizeof(float));
-		gLitSkullMesh->Set(attribPos, *compositeBuff, posView);
-		gLitSkullMesh->Set(attribNorm, *compositeBuff, normView);
-		gLitSkullMesh->Set(attribTan, *compositeBuff, tanView);
-		gLitSkullMesh->Set(attribUv, *compositeBuff, texView);
-		gLitSkullMesh->SetUserData(skullMesh->numPos);
+		gLitNoPCM->skullMesh->Set(attribPos, *compositeBuff, posView);
+		gLitNoPCM->skullMesh->Set(attribNorm, *compositeBuff, normView);
+		gLitNoPCM->skullMesh->Set(attribTan, *compositeBuff, tanView);
+		gLitNoPCM->skullMesh->Set(attribUv, *compositeBuff, texView);
+		gLitNoPCM->skullMesh->SetUserData(skullMesh->numPos);
 		gBuffers[8] = compositeBuff;
-		
+
+		gLitWithPCM->skullMesh = gfx->CreateVertexLayout();
+		attribPos = gLitWithPCM->shader->GetAttribute("aPos");
+		attribUv = gLitWithPCM->shader->GetAttribute("aTexCoord");
+		attribNorm = gLitWithPCM->shader->GetAttribute("aNorm");
+		attribTan = gLitWithPCM->shader->GetAttribute("aTan");
+		gLitWithPCM->skullMesh->Set(attribPos, *compositeBuff, posView);
+		gLitWithPCM->skullMesh->Set(attribNorm, *compositeBuff, normView);
+		gLitWithPCM->skullMesh->Set(attribTan, *compositeBuff, tanView);
+		gLitWithPCM->skullMesh->Set(attribUv, *compositeBuff, texView);
+		gLitWithPCM->skullMesh->SetUserData(skullMesh->numPos);
+		gBuffers[8] = compositeBuff;
 
 		gfx->Release(float_arr);
 	}
@@ -433,10 +493,10 @@ void Update(Graphics::Device* g, float deltaTime) {
 	if (lastPCM != enablePCM) {
 		gLightmapDepth->SetPCM(enablePCM);
 		if (enablePCM) {
-			gPCMShader = gLitShaderPCM;
+			gPCMState = gLitWithPCM;
 		}
 		else {
-			gPCMShader = gLitShader;
+			gPCMState = gLitNoPCM;
 		}
 		lastPCM = enablePCM;
 	}
@@ -468,8 +528,9 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	if (!isFinishedInitializing) {
 		return;
 	}
+#ifndef _WIN64
 	IsRunning = false;
-
+#endif // !_WIN64
 
 	GraphicsAssert(gLightmapMVP.valid, "(5) INvalid lightmap mvp?");
 
@@ -559,33 +620,32 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->Bind(gProjectionIndex, Graphics::UniformType::Float16, projection.v);
 		gfx->Draw(*gHemiSkullMesh, Graphics::DrawMode::Triangles, 0, gHemiSkullMesh->GetUserData());
 
-		gfx->Bind(gPCMShader);
+		gfx->Bind(gPCMState->shader);
 
-		gfx->Bind(gLitModelIndex, Graphics::UniformType::Float16, model2.v);
-		gfx->Bind(gLitShadowIndex, Graphics::UniformType::Float16, shadowMatrix2.v);
-		gfx->Bind(gLitViewIndex, Graphics::UniformType::Float16, view.v);
-		gfx->Bind(gLitProjectionIndex, Graphics::UniformType::Float16, projection.v);
+		gfx->Bind(gPCMState->modelIndex, Graphics::UniformType::Float16, model2.v);
+		gfx->Bind(gPCMState->shadowIndex, Graphics::UniformType::Float16, shadowMatrix2.v);
+		gfx->Bind(gPCMState->viewIndex, Graphics::UniformType::Float16, view.v);
+		gfx->Bind(gPCMState->projectionIndex, Graphics::UniformType::Float16, projection.v);
 
-		gfx->Bind(gLitAlbedoIndex, *gSkullTextureAlbedo, sampler);
-		gfx->Bind(gLitLightmapIndex, *gLightmapDepth, depthSampler);
-		gfx->Bind(gLitNormalIndex, *gSkullTextureNormal, sampler);
-		gfx->Bind(gLitLightDirection, Graphics::UniformType::Float3, lightDir.v);
-		gfx->Bind(gLitLightColor, Graphics::UniformType::Float3, lightColor.v);
-		gfx->Bind(gLitViewPos, Graphics::UniformType::Float3, cameraPos.v);
-		gfx->Bind(gLitAmbientStrength, Graphics::UniformType::Float1, &ambient);
-		gfx->Bind(gLitAmbientOnly, Graphics::UniformType::Float1, &ambientOnly);
-
+		gfx->Bind(gPCMState->albedoIndex, *gSkullTextureAlbedo, sampler);
+		gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
+		gfx->Bind(gPCMState->normalIndex, *gSkullTextureNormal, sampler);
+		gfx->Bind(gPCMState->lightDirection, Graphics::UniformType::Float3, lightDir.v);
+		gfx->Bind(gPCMState->lightColor, Graphics::UniformType::Float3, lightColor.v);
+		gfx->Bind(gPCMState->viewPos, Graphics::UniformType::Float3, cameraPos.v);
+		gfx->Bind(gPCMState->ambientStrength, Graphics::UniformType::Float1, &ambient);
+		gfx->Bind(gPCMState->ambientOnly, Graphics::UniformType::Float1, &ambientOnly);
 		
-		gfx->Draw(*gLitSkullMesh, Graphics::DrawMode::Triangles, 0, gLitSkullMesh->GetUserData());
+		gfx->Draw(*gPCMState->skullMesh, Graphics::DrawMode::Triangles, 0, gPCMState->skullMesh->GetUserData());
 
 		ambient = 0.0f;
-		gfx->Bind(gLitModelIndex, Graphics::UniformType::Float16, model3.v);
-		gfx->Bind(gLitShadowIndex, Graphics::UniformType::Float16, shadowMatrix3.v);
-		gfx->Bind(gLitAlbedoIndex, *gPlaneTextureAlbedo, sampler);
-		gfx->Bind(gLitLightmapIndex, *gLightmapDepth, depthSampler);
-		gfx->Bind(gLitNormalIndex, *gPlaneTextureNormal, sampler);
-		gfx->Bind(gLitAmbientStrength, Graphics::UniformType::Float1, &ambient);
-		gfx->Draw(*gLitPlaneMesh, Graphics::DrawMode::Triangles, 0, gLitPlaneMesh->GetUserData());
+		gfx->Bind(gPCMState->modelIndex, Graphics::UniformType::Float16, model3.v);
+		gfx->Bind(gPCMState->shadowIndex, Graphics::UniformType::Float16, shadowMatrix3.v);
+		gfx->Bind(gPCMState->albedoIndex, *gPlaneTextureAlbedo, sampler);
+		gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
+		gfx->Bind(gPCMState->normalIndex, *gPlaneTextureNormal, sampler);
+		gfx->Bind(gPCMState->ambientStrength, Graphics::UniformType::Float1, &ambient);
+		gfx->Draw(*gPCMState->planeMesh, Graphics::DrawMode::Triangles, 0, gPCMState->planeMesh->GetUserData());
 	}
 
 	if (ShowDepth) { // Draw debug
@@ -621,16 +681,21 @@ void Shutdown(Graphics::Device* gfx) {
 	gfx->Destroy(gLightmapDepth);
 	gfx->Destroy(gLightmapBlitShader);
 	gfx->Destroy(gLightmapDrawShader);
-	gfx->Destroy(gLitShader);
-	gfx->Destroy(gLitShaderPCM);
-	gfx->Destroy(gLitSkullMesh);
-	gfx->Destroy(gLitPlaneMesh);
+	gfx->Destroy(gLitNoPCM->shader);
+	gfx->Destroy(gLitWithPCM->shader);
+	gfx->Destroy(gLitNoPCM->skullMesh);
+	gfx->Destroy(gLitWithPCM->skullMesh);
+	gfx->Destroy(gLitNoPCM->planeMesh);
+	gfx->Destroy(gLitWithPCM->planeMesh);
 	gfx->Destroy(gPlaneTextureAlbedo);
 	gfx->Destroy(gPlaneTextureNormal);
 	gfx->Destroy(gHemiShader);
 	gfx->Destroy(gHemiSkullMesh);
 	gfx->Destroy(gSkullTextureAlbedo);
 	gfx->Destroy(gSkullTextureNormal);
+
+	gfx->Release(gLitNoPCM);
+	gfx->Release(gLitWithPCM);
 
 	Graphics::Shutdown(*gfx);
 	gfx = 0;

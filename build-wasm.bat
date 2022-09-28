@@ -75,7 +75,7 @@ C:/WASM/clang.exe -x c++ ^
     -D DEBUG=1 ^
     -D _DEBUG=1 ^
     -o GraphicsSample.wasm ^
-    WasmSampleExpanded.cpp
+    WasmSample.cpp
 
 REM  Build GraphicsSample.wasm.map from GraphicsSample.wasm
 python C:/WASM/wasm-sourcemap.py ^

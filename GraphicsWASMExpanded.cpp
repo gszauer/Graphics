@@ -141,22 +141,13 @@ namespace Graphics {
 
  struct Index { // Uniform / Attribute Index
   u32 id;
+  u32 shader;
   bool valid;
 
-  inline Index(u32 _id = 0, bool _valid = false) {
+  inline Index(u32 _id = 0, bool _valid = false, u32 _shader = 0) {
    id = _id;
    valid = _valid;
-  }
-
-  inline Index(const Index& o) {
-   id = o.id;
-   valid = o.valid;
-  }
-
-  inline Index& operator=(const Index& o) {
-   id = o.id;
-   valid = o.valid;
-   return *this;
+   shader = _shader;
   }
  };
 
@@ -1506,6 +1497,7 @@ void Graphics::Device::Bind(Shader* shader) {
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
  Graphics::Internal::Assert(slot.valid, "On line: " "970" ", in file: " "GraphicsWASM.cpp", "Setting invalid uniform");
  Graphics::Internal::Assert(slot.valid || (!slot.valid && slot.id != 0), "On line: " "971" ", in file: " "GraphicsWASM.cpp", "Something messed with slot");
+ Graphics::Internal::Assert(slot.shader == mBoundProgram, "On line: " "972" ", in file: " "GraphicsWASM.cpp", "Binding index to wrong shader");
  wasmGraphics_DeviceSetUniform((int)type, slot.id, count, data);
 }
 
@@ -1569,23 +1561,23 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
   if (mBoundTextures[i].texture != 0) { // Something is bound
    if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
     textureUnit = i;
-    Graphics::Internal::Assert(target == mBoundTextures[i].target, "On line: " "1035" ", in file: " "GraphicsWASM.cpp", "Binding invalid texture types");
+    Graphics::Internal::Assert(target == mBoundTextures[i].target, "On line: " "1036" ", in file: " "GraphicsWASM.cpp", "Binding invalid texture types");
     break;
    }
   }
   else if (firstFree == 33) {
-   Graphics::Internal::Assert(!mBoundTextures[i].index.valid, "On line: " "1040" ", in file: " "GraphicsWASM.cpp", "free slot should not be valid");
+   Graphics::Internal::Assert(!mBoundTextures[i].index.valid, "On line: " "1041" ", in file: " "GraphicsWASM.cpp", "free slot should not be valid");
    firstFree = i;
   }
  }
  if (textureUnit == 33) {
   textureUnit = firstFree;
   mBoundTextures[firstFree].index = uniformSlot;
-  Graphics::Internal::Assert(mBoundTextures[firstFree].index.valid, "On line: " "1047" ", in file: " "GraphicsWASM.cpp", "Found invalid index");
+  Graphics::Internal::Assert(mBoundTextures[firstFree].index.valid, "On line: " "1048" ", in file: " "GraphicsWASM.cpp", "Found invalid index");
   mBoundTextures[firstFree].target = target;
   mBoundTextures[firstFree].texture = &texture;
  }
- Graphics::Internal::Assert(textureUnit < 33, "On line: " "1051" ", in file: " "GraphicsWASM.cpp", "Invalid texture unit");
+ Graphics::Internal::Assert(textureUnit < 33, "On line: " "1052" ", in file: " "GraphicsWASM.cpp", "Invalid texture unit");
 
 
  GLenum enumTextureUnit = Internal::GetTextureUnit(textureUnit);
@@ -1684,11 +1676,11 @@ void Graphics::Shutdown(Device& device) {
  device.Bind(0);
  wasmGraphics_BindVAO(0);
 
- Graphics::Internal::Assert(device.mAllocatedTextures == 0, "On line: " "1150" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedBuffers == 0, "On line: " "1151" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedStates == 0, "On line: " "1152" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedShaders == 0, "On line: " "1153" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
- Graphics::Internal::Assert(device.mAllocatedFrameBuffers == 0, "On line: " "1154" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedTextures == 0, "On line: " "1151" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedBuffers == 0, "On line: " "1152" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedStates == 0, "On line: " "1153" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedShaders == 0, "On line: " "1154" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedFrameBuffers == 0, "On line: " "1155" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
 
  device.mPlatform.Request = 0;
  device.mPlatform.Release = 0;
@@ -1718,13 +1710,10 @@ Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
  for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
  int location = wasmGraphics_ShaderGetAttribute(mProgram, name, wasmLen);
- Index result;
- result.id = 0;
- result.valid = false;
+ Index result(0, false, mProgram);
 
  if (location >= 0) {
-  result.id = location;
-  result.valid = true;
+  result = Index(location, true, mProgram);
  }
 
  return result;
@@ -1735,14 +1724,10 @@ Graphics::Index Graphics::Shader::GetUniform(const char* name) {
  for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
  int location = wasmGraphics_ShaderGetUniform(mProgram, name, wasmLen);
-
- Index result;
- result.id = 0;
- result.valid = false;
+ Index result(0, false, mProgram);
 
  if (location >= 0) {
-  result.id = location;
-  result.valid = true;
+  result = Index(location, true, mProgram);
  }
 
  return result;
@@ -1867,8 +1852,8 @@ void Graphics::FrameBuffer::ResolveTo(FrameBuffer* target, Filter filter, bool c
  u32 width = GetWidth();
  u32 height = GetHeight();
 
- Graphics::Internal::Assert(GetWidth() == target->GetWidth(), "On line: " "1333" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
- Graphics::Internal::Assert(GetHeight() == target->GetHeight(), "On line: " "1334" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
+ Graphics::Internal::Assert(GetWidth() == target->GetWidth(), "On line: " "1327" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
+ Graphics::Internal::Assert(GetHeight() == target->GetHeight(), "On line: " "1328" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
 
  ResolveTo(target, filter, color, depth, 0, 0, width, height, 0, 0, width, height);
 }

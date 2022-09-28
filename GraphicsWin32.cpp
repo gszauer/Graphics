@@ -1001,6 +1001,7 @@ void Graphics::Device::Bind(Shader* shader) {
 
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
 	GraphicsAssert(slot.valid, "Setting invalid uniform");
+	GraphicsAssert(slot.shader == mBoundProgram, "Binding index to wrong shader");
 	if (type == UniformType::Int1) {
 		glUniform1iv(slot.id, count, (const GLint*)data);
 	}
@@ -1289,13 +1290,10 @@ void Graphics::VertexLayout::Reset() {
 
 Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
 	GLint location = glGetAttribLocation(mProgram, name);
-	Index result;
-	result.id = 0;
-	result.valid = false;
+	Index result(0, false, mProgram);
 
 	if (location >= 0) {
-		result.id = location;
-		result.valid = true;
+		result = Index(location, true, mProgram);
 	}
 
 	return result;
@@ -1303,13 +1301,10 @@ Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
 
 Graphics::Index Graphics::Shader::GetUniform(const char* name) {
 	GLint location = glGetUniformLocation(mProgram, name);
-	Index result;
-	result.id = 0;
-	result.valid = false;
+	Index result(0, false, mProgram);
 
 	if (location >= 0) {
-		result.id = location;
-		result.valid = true;
+		result = Index(location, true, mProgram);
 	}
 
 	return result;

@@ -969,6 +969,7 @@ void Graphics::Device::Bind(Shader* shader) {
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
 	GraphicsAssert(slot.valid, "Setting invalid uniform");
 	GraphicsAssert(slot.valid || (!slot.valid && slot.id != 0), "Something messed with slot");
+	GraphicsAssert(slot.shader == mBoundProgram, "Binding index to wrong shader");
 	wasmGraphics_DeviceSetUniform((int)type, slot.id, count, data);
 }
 
@@ -1181,13 +1182,10 @@ Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
 	for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
 	int location = wasmGraphics_ShaderGetAttribute(mProgram, name, wasmLen);
-	Index result;
-	result.id = 0;
-	result.valid = false;
+	Index result(0, false, mProgram);
 
 	if (location >= 0) {
-		result.id = location;
-		result.valid = true;
+		result = Index(location, true, mProgram);
 	}
 
 	return result;
@@ -1198,14 +1196,10 @@ Graphics::Index Graphics::Shader::GetUniform(const char* name) {
 	for (const char* i = name; name != 0 && *i != '\0'; ++i, ++wasmLen);
 
 	int location = wasmGraphics_ShaderGetUniform(mProgram, name, wasmLen);
-	
-	Index result;
-	result.id = 0;
-	result.valid = false;
+	Index result(0, false, mProgram);
 
 	if (location >= 0) {
-		result.id = location;
-		result.valid = true;
+		result = Index(location, true, mProgram);
 	}
 
 	return result;
