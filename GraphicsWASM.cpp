@@ -21,7 +21,7 @@ typedef int GLenum;
 extern "C" void wasmGraphics_Log(const char* loc, int locLen, const char* msg, int msgLen);
 extern "C" void wasmGraphics_SetTexturePCM(int glTextureId, int glTextureAttachTarget, int glCompareMode, int glCompareFunc);
 extern "C" void wasmGraphics_TextureSetData(int glTextureId, int glInternalFormat, int width, int height, int glDataFormat, int glDataFormatType, void* data, bool genMipMaps);
-extern "C" void wasmGraphics_TextureSetCubemap(int glTextureId, int glInternalFormat, int width, int height, int glDataFormat, int glDataType, void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, bool genMipMaps);
+//extern "C" void wasmGraphics_TextureSetCubemap(int glTextureId, int glInternalFormat, int width, int height, int glDataFormat, int glDataType, void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, bool genMipMaps);
 extern "C" void wasmGraphics_DeviceSetFaceVisibility(bool enableCullFace, bool disableCullFace, int cullFaceType, bool changeFace, int faceWind);
 extern "C" void wasmGraphics_DeviceClearRGBAD(float r, float g, float b, float d);
 extern "C" void wasmGraphics_SetDepthState(bool changeDepthState, int depthState, bool changeDepthFunc, int func, bool changeDepthRange, float depthRangeMin, float depthRangeMax);
@@ -126,7 +126,6 @@ extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, c
 #define GL_UNSIGNED_INT					0x1405
 #define GL_UNSIGNED_SHORT				0x1403	
 #define GL_TEXTURE_2D					0x0DE1
-#define GL_TEXTURE_CUBE_MAP				0x8513
 #define GL_COMPARE_REF_TO_TEXTURE		0x884E
 #define GL_BACK							0x0405
 #define GL_CCW							0x0901
@@ -431,9 +430,6 @@ namespace Graphics {
 /// Texture
 void Graphics::Texture::SetPCM(bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	GLenum compareMode = GL_NONE;
 	GLenum compareFunc = GL_NONE;
@@ -452,24 +448,9 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 
 	mWidth = width;
 	mHeight = height;
-	mIsCubeMap = false;
 	mIsMipMapped = genMipMaps;
 
 	wasmGraphics_TextureSetData(mId, internalFormat,  width,  height, f.dataFormat, f.dataType, data, genMipMaps);
-}
-
-void Graphics::Texture::SetCubemap(void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, 
-	u32 width, u32 height, TextureFormat texFormat, bool genMipMaps) {
-
-	GLenum internalFormat = Internal::TextureGetInternalFormatFromEnum(mInternalFormat);
-	Internal::TextureFormatResult f = Internal::TextureGetDataFormatFromEnum(texFormat);
-
-	mWidth = width;
-	mHeight = height;
-	mIsCubeMap = true;
-	mIsMipMapped = genMipMaps;
-
-	wasmGraphics_TextureSetCubemap(mId, internalFormat, width, height, f.dataFormat, f.dataType, rightData, leftData, topData, bottomData, backData, frontData, genMipMaps);
 }
 
 /// Device
@@ -819,7 +800,6 @@ Graphics::Texture* Graphics::Device::CreateTexture(TextureFormat format) {
 	result->mHeight = 0;
 	result->mInternalFormat = format;
 	result->mIsMipMapped = false;
-	result->mIsCubeMap = false;
 	result->mUserData = 0;
 
 	result->mCachedMin = GL_NEAREST_MIPMAP_LINEAR;
@@ -1007,7 +987,6 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 
 	GLenum wrapS = GL_REPEAT;
 	GLenum wrapT = GL_REPEAT;
-	GLenum wrapR = GL_REPEAT;
 
 	if (sampler.wrapS == WrapMode::Clamp) {
 		wrapS = GL_CLAMP_TO_EDGE;
@@ -1017,14 +996,7 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 		wrapT = GL_CLAMP_TO_EDGE;
 	}
 
-	if (sampler.wrapR == WrapMode::Clamp) {
-		wrapR = GL_CLAMP_TO_EDGE;
-	}
-
 	GLenum target = GL_TEXTURE_2D;
-	if (texture.mIsCubeMap) {
-		target = GL_TEXTURE_CUBE_MAP;
-	}
 
 	// Find texture unit
 	u32 textureUnit = 33;
@@ -1074,14 +1046,8 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 		updateSampler = true;
 		texture.mCachedT = wrapT;
 	}
-	if (texture.mIsCubeMap) {
-		if (texture.mCachedR != wrapR) {
-			updateSampler = true;
-			texture.mCachedR = wrapR;
-		}
-	}
 
-	wasmGraphics_DeviceBindTexture(enumTextureUnit, textureUnit, target, texture.mId, uniformSlot.id, min, mag, wrapS, wrapT, wrapR, updateSampler);
+	wasmGraphics_DeviceBindTexture(enumTextureUnit, textureUnit, target, texture.mId, uniformSlot.id, min, mag, wrapS, wrapT, wrapT, updateSampler);
 }
 
 void Graphics::Device::Draw(const VertexLayout& attributes, DrawMode drawMode, u32 startIndex, u32 indexCount, u32 instanceCount) {
@@ -1257,9 +1223,6 @@ void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
 	}
 
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (color.mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	color.mCachedMin = GL_LINEAR;
 	color.mCachedMag = GL_LINEAR;
@@ -1271,9 +1234,6 @@ void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
 
 void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (depth.mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	depth.mCachedMin = GL_LINEAR;
 	depth.mCachedMag = GL_LINEAR;

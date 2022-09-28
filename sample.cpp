@@ -17,7 +17,6 @@ Graphics::VertexLayout*	gLightmapMesh;
 Graphics::VertexLayout* gLightmapSkullLayout;
 Graphics::VertexLayout* gLightmapPlaneLayout;
 
-
 struct PCMState {
 	Graphics::Shader* shader;
 	Graphics::Index modelIndex;
@@ -130,51 +129,41 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	LoadText("assets/blit-depth.vert", [](const char* path, TextFile* file) {
 		blit_depth_vShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/blit-depth.frag", [](const char* path, TextFile* file) {
 		blit_depth_fShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/lightmap.vert", [](const char* path, TextFile* file) {
 		lightmap_vShader = file;
 		GraphicsAssert(lightmap_vShader->length != 0, "Empty lightmap.vert");
 		GraphicsAssert(lightmap_vShader->text != 0, "No text pointer in lightmap.vert");
 		GraphicsAssert(*lightmap_vShader->text != 0, "Empty string in lightmap.vert");
-		//GraphicsAssert(*lightmap_vShader->text == 0, file->text );
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/lightmap.frag", [](const char* path, TextFile* file) {
 		lightmap_fShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/lit.vert", [](const char* path, TextFile* file) {
 		lit_vShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/lit.frag", [](const char* path, TextFile* file) {
 		lit_fShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/lit-pcm.frag", [](const char* path, TextFile* file) {
 		lit_pcm_fShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/hemi.vert", [](const char* path, TextFile* file) {
 		hemi_vShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadText("assets/hemi.frag", [](const char* path, TextFile* file) {
 		hemi_fShader = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadMesh("assets/skull.mesh", [](const char* path, MeshFile* file) {
 		skullMesh = file;
@@ -187,22 +176,18 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
 		skullNormal = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadTexture("assets/Plane_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
 		planeAlbedo = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadTexture("assets/Plane_Normal.texture", [](const char* path, TextureFile* file) {
 		planeNormal = file;
 		numFilesToLoad -= 1;
-		
 		});
 	LoadTexture("assets/Skull_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
 		skullAlbedo = file;
 		numFilesToLoad -= 1;
-		
 		});
 }
 

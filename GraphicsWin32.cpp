@@ -437,9 +437,6 @@ namespace Graphics {
 /// Texture
 void Graphics::Texture::SetPCM(bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	glBindTexture(attachTarget, mId);
 	if (pcm) {
@@ -466,36 +463,9 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 	
 	mWidth = width;
 	mHeight = height;
-	mIsCubeMap = false;
 	mIsMipMapped = genMipMaps;
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void Graphics::Texture::SetCubemap(void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, 
-	u32 width, u32 height, TextureFormat texFormat, bool genMipMaps) {
-	glBindTexture(GL_TEXTURE_CUBE_MAP, mId);
-
-	GLenum internalFormat = Internal::TextureGetInternalFormatFromEnum(mInternalFormat);
-	Internal::TextureFormatResult f = Internal::TextureGetDataFormatFromEnum(texFormat);
-
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, rightData);
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, leftData);
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, topData);
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, bottomData);
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, backData);
-	glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, internalFormat, width, height, 0, f.dataFormat, f.dataType, frontData);
-
-	if (genMipMaps) {
-		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-	}
-
-	mWidth = width;
-	mHeight = height;
-	mIsCubeMap = true;
-	mIsMipMapped = genMipMaps;
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
 
 /// Device
@@ -830,7 +800,6 @@ Graphics::Texture* Graphics::Device::CreateTexture(TextureFormat format) {
 	result->mHeight = 0;
 	result->mInternalFormat = format;
 	result->mIsMipMapped = false;
-	result->mIsCubeMap = false;
 	result->mUserData = 0;
 
 	result->mCachedMin = GL_NEAREST_MIPMAP_LINEAR;
@@ -1068,7 +1037,6 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 
 	GLenum wrapS = GL_REPEAT;
 	GLenum wrapT = GL_REPEAT;
-	GLenum wrapR = GL_REPEAT;
 
 	if (sampler.wrapS == WrapMode::Clamp) {
 		wrapS = GL_CLAMP_TO_EDGE;
@@ -1078,14 +1046,7 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 		wrapT = GL_CLAMP_TO_EDGE;
 	}
 
-	if (sampler.wrapR == WrapMode::Clamp) {
-		wrapR = GL_CLAMP_TO_EDGE;
-	}
-
 	GLenum target = GL_TEXTURE_2D;
-	if (texture.mIsCubeMap) {
-		target = GL_TEXTURE_CUBE_MAP;
-	}
 
 	// Find texture unit
 	u32 textureUnit = 33;
@@ -1131,12 +1092,6 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 	if (texture.mCachedT != wrapT) {
 		glTexParameteri(target, GL_TEXTURE_WRAP_T, wrapT);
 		texture.mCachedT = wrapT;
-	}
-	if (texture.mIsCubeMap) {
-		if (texture.mCachedR != wrapR) {
-			glTexParameteri(target, GL_TEXTURE_WRAP_R, wrapR);
-			texture.mCachedR = wrapR;
-		}
 	}
 
 	GraphicsAssert(uniformSlot.valid, "Setting invalid uniform");
@@ -1372,9 +1327,6 @@ void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
 	}
 
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (color.mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, mId);
 	
@@ -1397,9 +1349,6 @@ void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
 
 void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
-	if (depth.mIsCubeMap) {
-		attachTarget = GL_TEXTURE_CUBE_MAP;
-	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, mId);
 	

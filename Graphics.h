@@ -154,15 +154,13 @@ namespace Graphics {
 	struct Sampler {
 		WrapMode wrapS;
 		WrapMode wrapT;
-		WrapMode wrapR; // Only used for cubemaps
 		Filter min; // Downscale
 		Filter mip; // Mipmap transition
 		Filter mag; // Upscale
 
-		inline Sampler(WrapMode _wrapS = WrapMode::Repeat, WrapMode _wrapT = WrapMode::Repeat, WrapMode _wrapR = WrapMode::Repeat, Filter _min = Filter::Linear, Filter _mip = Filter::Linear, Filter _mag = Filter::Linear) {
+		inline Sampler(WrapMode _wrapS = WrapMode::Repeat, WrapMode _wrapT = WrapMode::Repeat, Filter _min = Filter::Linear, Filter _mip = Filter::Linear, Filter _mag = Filter::Linear) {
 			wrapS = _wrapS;
 			wrapT = _wrapT;
-			wrapR = _wrapR;
 			min = _min;
 			mip = _mip;
 			mag = _mag;
@@ -171,7 +169,6 @@ namespace Graphics {
 		inline Sampler(Filter _min, Filter _mip = Filter::Linear, Filter _mag = Filter::Linear) {
 			wrapS = WrapMode::Repeat;
 			wrapT = WrapMode::Repeat;
-			wrapR = WrapMode::Repeat;
 			min = _min;
 			mip = _mip;
 			mag = _mag;
@@ -180,7 +177,6 @@ namespace Graphics {
 		inline Sampler(WrapMode _wrap) {
 			wrapS = _wrap;
 			wrapT = _wrap;
-			wrapR = _wrap;
 			min = Filter::Linear;
 			mip = Filter::Linear;
 			mag = Filter::Linear;
@@ -217,7 +213,6 @@ namespace Graphics {
 		u32 mHeight;
 		u32 mUserData;
 		bool mIsMipMapped;
-		bool mIsCubeMap;
 		TextureFormat mInternalFormat;
 
 		u32 mCachedMin; // Default: GL_NEAREST_MIPMAP_LINEAR
@@ -242,9 +237,6 @@ namespace Graphics {
 			TextureFormat dataFormat = TextureFormat::RGBA8;
 			Set(0, mInternalFormat, width, height, false);
 		}
-
-		void SetCubemap(void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, 
-			u32 width, u32 height, TextureFormat format, bool genMipMaps);
 
 		inline u32 GetWidth() {
 			return mWidth;

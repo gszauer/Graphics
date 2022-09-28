@@ -5,20 +5,20 @@ REM -Dd will include all #defines
 REM -E makes it stop after preprocessor
 REM -P omits markers
 REM -C maintains comments
-C:/WASM/clang.exe -x c++ ^
-    -E -P -C ^
-    --target=wasm32 ^
-    -nostdinc ^
-    -nostdlib ^
-    -O0 ^
-    -g ^
-    -fno-threadsafe-statics ^
-    -D WASM32=1 ^
-    -D _WASM32=1 ^
-    -D DEBUG=1 ^
-    -D _DEBUG=1 ^
-    -o GraphicsWASMExpanded.cpp ^
-    GraphicsWASM.cpp
+REM C:/WASM/clang.exe -x c++ ^
+REM     -E -P -C ^
+REM     --target=wasm32 ^
+REM     -nostdinc ^
+REM     -nostdlib ^
+REM     -O0 ^
+REM     -g ^
+REM     -fno-threadsafe-statics ^
+REM     -D WASM32=1 ^
+REM     -D _WASM32=1 ^
+REM     -D DEBUG=1 ^
+REM     -D _DEBUG=1 ^
+REM     -o GraphicsWASMExpanded.cpp ^
+REM     GraphicsWASM.cpp
 
 
 REM Compile GraphicsWASMExpanded.cpp to Graphics.wasm
@@ -39,23 +39,23 @@ C:/WASM/clang.exe -x c++ ^
     -D DEBUG=1 ^
     -D _DEBUG=1 ^
     -o Graphics.wasm ^
-    GraphicsWASMExpanded.cpp
+    GraphicsWASM.cpp
 
 REM Expand WasmSample.cpp to WasmSampleExpanded.cpp
-C:/WASM/clang.exe -x c++ ^
-    -E -P -C ^
-    --target=wasm32 ^
-    -nostdinc ^
-    -nostdlib ^
-    -O0 ^
-    -gfull ^
-    -fno-threadsafe-statics ^
-    -D WASM32=1 ^
-    -D _WASM32=1 ^
-    -D DEBUG=1 ^
-    -D _DEBUG=1 ^
-    -o WasmSampleExpanded.cpp ^
-    WasmSample.cpp
+REM C:/WASM/clang.exe -x c++ ^
+REM     -E -P -C ^
+REM     --target=wasm32 ^
+REM     -nostdinc ^
+REM     -nostdlib ^
+REM     -O0 ^
+REM     -gfull ^
+REM     -fno-threadsafe-statics ^
+REM     -D WASM32=1 ^
+REM     -D _WASM32=1 ^
+REM     -D DEBUG=1 ^
+REM     -D _DEBUG=1 ^
+REM     -o WasmSampleExpanded.cpp ^
+REM     WasmSample.cpp
 
 REM Expand Compile WasmSampleExpanded.cpp to GraphicsSample.wasm
 C:/WASM/clang.exe -x c++ ^

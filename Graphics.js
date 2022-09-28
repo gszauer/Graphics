@@ -250,39 +250,17 @@ class GraphicsManager {
         
         GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, texture); 
         if (int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT24) {
-            let gl = GlobalGraphicsManager.gl;
-            const level = 0;
-            const internalFormat = gl.DEPTH_COMPONENT24;
-            const border = 0;
-            const format = gl.DEPTH_COMPONENT;
-            const type = gl.UNSIGNED_INT;
-            const data = null;
-            gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
-                            512, 512, border,
-                            format, type, data);
-            GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, GlobalGraphicsManager.gl.DEPTH_COMPONENT, int_glDataFormatType, null);
+            //GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, GlobalGraphicsManager.gl.DEPTH_COMPONENT, int_glDataFormatType, null);
+            GlobalGraphicsManager.gl.texStorage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height);
         }
         else {
+            if (ptr_data == 0 || ptr_data == null) {
+                GlobalGraphicsManager.gl.texStorage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height);
+            }
+            else {
             GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataFormatType, GlobalGraphicsManager.memory_u8, ptr_data);
+            }
         }
-        if (bool_genMipMaps) {
-            GlobalGraphicsManager.gl.generateMipmap(GlobalGraphicsManager.gl.TEXTURE_2D);
-        }
-        GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, null);
-    }
-
-    wasmGraphics_TextureSetCubemap(int_glTextureId, int_glInternalFormat, int_width, int_height, int_glDataFormat, int_glDataType, ptr_rightData, ptr_leftData, ptr_topData, ptr_bottomData, ptr_backData, ptr_frontData, bool_genMipMaps) {
-        let texture = GlobalGraphicsManager.textures[int_glTextureId];
-        
-        GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, texture); 
-    
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_rightData);
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_leftData);
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_topData);
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_bottomData);
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_backData);
-        GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataType, GlobalGraphicsManager.memory_u8, ptr_frontData);
-    
         if (bool_genMipMaps) {
             GlobalGraphicsManager.gl.generateMipmap(GlobalGraphicsManager.gl.TEXTURE_2D);
         }
