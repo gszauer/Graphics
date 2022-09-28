@@ -411,11 +411,8 @@ void Update(Graphics::Device* g, float deltaTime) {
 	if (!isFinishedInitializing) {
 		isFinishedInitializing = true;
 		FinishInitializing(g);
-		GraphicsAssert(false, "Finished Initializing");
 		return;
 	}
-
-	return;
 
 	if (lastPCM != enablePCM) {
 		gLightmapDepth->SetPCM(enablePCM);

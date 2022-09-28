@@ -143,7 +143,6 @@ void LoadMesh(const char* path, OnMeshLoaded onMeshLoad) {
 }
 
 void ReleaseMesh(MeshFile* file) {
-	wasmGraphics_ReleaseMem(file->tan);
 	wasmGraphics_ReleaseMem(file);
 }
 
@@ -157,11 +156,7 @@ export void FinishLoadingTexture(const char* path, OnTextureLoaded triggerThisCa
 	sizes[2] = uint_data[2];
 
 	unsigned int mem_needed = sizeof(TextureFile);
-	void* mem = wasmGraphics_AllocateMem(mem_needed);
-	unsigned char* iter = (unsigned char*)mem;
-
-	TextureFile* result = (TextureFile*)iter;
-	iter += sizeof(TextureFile);
+	TextureFile* result = (TextureFile*)wasmGraphics_AllocateMem(mem_needed);
 
 	result->width = sizes[0];
 	result->height = sizes[1];
@@ -178,8 +173,12 @@ void LoadTexture(const char* path, OnTextureLoaded onTextureLoad) {
 }
 
 void ReleaseTexture(TextureFile* file) {
-	void* dataPtr = (unsigned char*)file->data - 3;
-	wasmGraphics_ReleaseMem(dataPtr);
+	GraphicsAssert(file->data != 0, "Can't free null pointer");
+	unsigned int* uint_data = ((unsigned int*)file->data) - 3;
+	GraphicsAssert(uint_data[0] == file->width, "Bad width");
+	GraphicsAssert(uint_data[1] == file->height, "Bad height");
+	GraphicsAssert(uint_data[2] == file->channels, "Bad channel count");
+	wasmGraphics_ReleaseMem(uint_data);
 	wasmGraphics_ReleaseMem(file);
 }
 

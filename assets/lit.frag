@@ -37,7 +37,7 @@ void main() {
 
 	vec3 viewDir = normalize(ViewPos - FragPos);
 	vec3 reflectDir = reflect(-lightDir, normal);
-	float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
 	vec3 specular = colorSpec.a * spec * LightColor;  
 
 	vec4 comp0 = vec4((ambient+diffuse+specular) * objectColor, 1.0);
@@ -45,5 +45,5 @@ void main() {
 	vec4 FinalColor = mix(comp0, comp1, AmbientOnly);
 
 	vec3 p = LightViewPos.xyz / LightViewPos.w;
-	FragColor = FinalColor * (texture(uShadowMap, p.xy).r < p.z? 0 : 1);
+	FragColor = FinalColor * (texture(uShadowMap, p.xy).r < p.z? 0.0 : 1.0);
 }
