@@ -1,3 +1,11 @@
+// https://stackoverflow.com/questions/72568387/why-is-an-objects-constructor-being-called-in-every-exported-wasm-function
+extern "C" void __wasm_call_ctors(void);
+__attribute__((export_name("_initialize")))
+extern "C" void _initialize(void) {
+    // The linker synthesizes this to call constructors.
+    __wasm_call_ctors();
+}
+
 #if 0
 static __attribute__((always_inline)) inline void* memcpy (void *dest, const void *src, unsigned int len) {
   char *d = (char*)dest;
@@ -48,19 +56,12 @@ export void StartSample(Graphics::Device* gfx) {
     Initialize(&deps, gfx);
 }
 
-int allowRenderToRun = 5;
 export void UpdateSample(Graphics::Device* gfx, float dt) {
-    if (isFinishedInitializing) {
-        allowRenderToRun -= 1;
-        if (allowRenderToRun < 0) {
-            allowRenderToRun = 0;
-        }
-    }
     Update(gfx, dt);
 }
 
 export void RenderSample(Graphics::Device * gfx, int x, int y, int w, int h) {
-    if (isFinishedInitializing && allowRenderToRun == 0) {
+    if (isFinishedInitializing) {
         Render(gfx, x, y, w, h);
     }
 }

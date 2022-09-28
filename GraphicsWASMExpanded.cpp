@@ -1,11 +1,3 @@
-# 1 "GraphicsWASM.cpp"
-# 1 "<built-in>" 1
-# 1 "<built-in>" 3
-# 370 "<built-in>" 3
-# 1 "<command line>" 1
-# 1 "<built-in>" 2
-# 1 "GraphicsWASM.cpp" 2
-# 1 "./Graphics.h" 1
 
 
 
@@ -21,13 +13,13 @@
 
 
 namespace Graphics {
-
+ // The only external dependancy is memory allocation
  typedef void* (*fpRequest)(u32 bytes);
  typedef void (*fpRelease)(void* mem);
 
  struct Dependencies {
-  fpRequest Request;
-  fpRelease Release;
+  fpRequest Request; // malloc
+  fpRelease Release; // free
 
   inline Dependencies() {
    Request = 0;
@@ -123,17 +115,17 @@ namespace Graphics {
 
  enum class CullFace {
   Off = 0,
-  Back = 1,
+  Back = 1, // Default
   Front = 2,
   FrontAndBack = 3
  };
 
  enum class FaceWind {
-  CounterClockwise = 0,
+  CounterClockwise = 0, // Default
   Clockwise = 1
  };
 
- enum class TextureFormat {
+ enum class TextureFormat { // Rename to texture format
   R8 = 0,
   RG8 = 1,
   RGB8 = 2,
@@ -147,7 +139,7 @@ namespace Graphics {
   Depth = 8
  };
 
- struct Index {
+ struct Index { // Uniform / Attribute Index
   u32 id;
   bool valid;
 
@@ -171,10 +163,10 @@ namespace Graphics {
  struct Sampler {
   WrapMode wrapS;
   WrapMode wrapT;
-  WrapMode wrapR;
-  Filter min;
-  Filter mip;
-  Filter mag;
+  WrapMode wrapR; // Only used for cubemaps
+  Filter min; // Downscale
+  Filter mip; // Mipmap transition
+  Filter mag; // Upscale
 
   inline Sampler(WrapMode _wrapS = WrapMode::Repeat, WrapMode _wrapT = WrapMode::Repeat, WrapMode _wrapR = WrapMode::Repeat, Filter _min = Filter::Linear, Filter _mip = Filter::Linear, Filter _mag = Filter::Linear) {
    wrapS = _wrapS;
@@ -205,10 +197,10 @@ namespace Graphics {
  };
 
  struct BufferView {
-  u32 NumberOfComponents;
+  u32 NumberOfComponents; // (1) float, (2) vec2, (3) vec3, (4) vec4
   u32 StrideInBytes;
-  BufferType Type;
-  u32 DataOffsetInBytes;
+  BufferType Type; // float or int
+  u32 DataOffsetInBytes; // pointer argument to glVertexAttribLPointer
 
   inline BufferView( u32 _numberOfComponents = 0,
        u32 _strideInBytes = 0,
@@ -221,11 +213,11 @@ namespace Graphics {
   }
  };
 
-
-
-
-
- class Texture {
+ // I'm going to keep the concept of a depth texture for now, and check
+ // how to use the extension in webgl. If htat doesn't work, then using a
+ // renderbuffer when TextureFormat::Depth instead of a texture object
+ // but i don't think compatibility is going to be that big of an issue.
+ class Texture { // These are texture objects
   friend class Device;
   friend class FrameBuffer;
  protected:
@@ -237,11 +229,11 @@ namespace Graphics {
   bool mIsCubeMap;
   TextureFormat mInternalFormat;
 
-  u32 mCachedMin;
-  u32 mCachedMag;
-  u32 mCachedS;
-  u32 mCachedR;
-  u32 mCachedT;
+  u32 mCachedMin; // Default: GL_NEAREST_MIPMAP_LINEAR
+  u32 mCachedMag; // Default: GL_LINEAR
+  u32 mCachedS; // Default = GL_REPEAT
+  u32 mCachedR; // Default = GL_REPEAT
+  u32 mCachedT; // Default = GL_REPEAT
 
   Texture* mAllocPrev;
   Texture* mAllocNext;
@@ -287,8 +279,8 @@ namespace Graphics {
  namespace Internal {
   struct TextureUnit {
    Graphics::Index index;
-   Graphics::Texture* texture;
-   u32 target;
+   Graphics::Texture* texture; // Null or bound texture
+   u32 target; // TEXTURE_2D, TEXTURE_3D, etc...
   };
  }
 
@@ -324,7 +316,15 @@ namespace Graphics {
    return mIndexBuffer;
   }
  };
-# 328 "./Graphics.h"
+
+ // Note to self in the future:
+ // The way this would work is that a MeshRenderer has a list of materials
+ // Each material has a shader. For each material, the mesh renderer needs
+ // to create a vertex layout. Then, when drawing a MeshRenderer, loop trough
+ // all of it's materials. For each material: bind the shader, and the vertex
+ // layout. 
+ // To do things like normal mapping, A mapping from VertexLayout to arbitrary
+ // shaders / materials needs to be doable. 
  class VertexLayout {
   friend class Device;
  protected:
@@ -360,7 +360,6 @@ namespace Graphics {
  protected:
   u32 mProgram;
   u32 mUserData;
-# 371 "./Graphics.h"
   Shader* mAllocPrev;
   Shader* mAllocNext;
   Device* mOwner;
@@ -380,7 +379,15 @@ namespace Graphics {
   inline u32 GetUserData() {
    return mUserData;
   }
-# 399 "./Graphics.h"
+
+  /* I added support for the shader knowing it's uniform names here,
+		* with the idea that a MeshRenderer would need to map the shader to
+		* some vertex buffer format. That's not really important tough. If the
+		* standard streams are known  "ie, position, normal, tangent, etc"
+		* then i can just get their Index-es and see if the index is valid
+		* if it is, bind it to the fbo, it it isn't, don't. Anyway, i already added
+		* the code to get the info, so i'm going to keep it alive without 
+		* exposing it. If it's not needed, i'll emove it from the final version */
  };
 
  class FrameBuffer {
@@ -448,33 +455,33 @@ namespace Graphics {
   u32 mBoundProgram;
   u32 mBoundFrameBuffer;
 
-
+  // Texture state
   Internal::TextureUnit mBoundTextures[32];
 
+  // Cull state
+  CullFace mFaceCulling; // Default back
+  FaceWind mWindingOrder; // Default CCW
 
-  CullFace mFaceCulling;
-  FaceWind mWindingOrder;
+  // Blend State
+  bool mBlend; // Default: false
+  f32 mBlendColor[4]; // Default: 0, 0, 0, 0
+  BlendFunction mBlendDstAlpha; // Default BlendFunction::Zero
+  BlendFunction mBlendDstRGB; // Default BlendFunction::Zero
+  BlendEquation mBlendEquationAlpha; // Default: BlendEquation::Add
+  BlendEquation mBlendEquationRGB; // Default: BlendEquation::Add
+  BlendFunction mBlendSrcAlpba; // Default BlendFunction::One
+  BlendFunction mBlendSrcRGB; // Default BlendFunction::One
 
+  // Depth state
+  bool mDepth; // true
+  DepthFunc mDepthFunc; // less
+  f32 mDepthRange[2]; // 0, 1
 
-  bool mBlend;
-  f32 mBlendColor[4];
-  BlendFunction mBlendDstAlpha;
-  BlendFunction mBlendDstRGB;
-  BlendEquation mBlendEquationAlpha;
-  BlendEquation mBlendEquationRGB;
-  BlendFunction mBlendSrcAlpba;
-  BlendFunction mBlendSrcRGB;
-
-
-  bool mDepth;
-  DepthFunc mDepthFunc;
-  f32 mDepthRange[2];
-
-
+  // Scissor state
   bool mScissor;
   u32 mScissorRect[4];
 
-
+  // Memory tracking
   Texture* mAllocatedTextures;
   Buffer* mAllocatedBuffers;
   VertexLayout* mAllocatedStates;
@@ -535,23 +542,23 @@ namespace Graphics {
   }
   void Destroy(Texture* buff);
 
-  void Bind(Shader* shader);
+  void Bind(Shader* shader); // Binds shader & allows for Bind(0)
   inline void Bind(Shader& shader) {
    Bind(&shader);
   }
 
-
+  // Frame buffers should persist between Bind calls, even if null is bound
   void SetRenderTarget(FrameBuffer* frameBuffer);
   inline void SetRenderTarget(FrameBuffer& frameBuffer) {
    SetRenderTarget(&frameBuffer);
   }
 
-  void Bind(Index& slot, UniformType type, void* data, u32 count = 1);
-  void Bind(Index& uniformSlot, Texture& texture, Sampler& sampler);
+  void Bind(Index& slot, UniformType type, void* data, u32 count = 1); // Binds uniform
+  void Bind(Index& uniformSlot, Texture& texture, Sampler& sampler); // Binds texture (uniform still)
 
   void Draw(const VertexLayout& attributes, DrawMode drawMode, u32 startIndex, u32 indexCount, u32 instanceCount = 1);
- public:
-
+ public: // State management
+  // Blend state
   void SetBlendState(bool blend, f32* optBlendColor,
    BlendFunction blendDstRgb, BlendFunction blendDstAlpha,
    BlendEquation blendEquationRgb, BlendEquation blendEquationAlpha,
@@ -572,13 +579,13 @@ namespace Graphics {
   inline void SetBlendState(bool blend) {
    SetBlendState(blend, 0, BlendFunction::Zero, BlendFunction::Zero, BlendEquation::Add, BlendEquation::Add, BlendFunction::One, BlendFunction::One);
   }
+  // End Blend state
 
-
-
+  // Cull state
   void SetFaceVisibility(CullFace cull, FaceWind wind = FaceWind::CounterClockwise);
+  // End cull state
 
-
-
+  // Depth State
   void SetDepthState(bool enable, DepthFunc depthFunc, f32* depthRange = 0);
   inline void SetDepthState(DepthFunc depthFunc) {
    SetDepthState(true, depthFunc, 0);
@@ -586,14 +593,14 @@ namespace Graphics {
   inline void SetDepthState(bool enable) {
    SetDepthState(enable, DepthFunc::Less, 0);
   }
+  // End depth state
 
-
-
+  // Scissor State
   void SetScissorState(bool enable, u32 x, u32 y, u32 w, u32 h);
   inline void SetScissorState(bool enable) {
    SetScissorState(enable, mScissorRect[0], mScissorRect[1], mScissorRect[2], mScissorRect[3]);
   }
-
+  // End Scissor state
 
 
   void WriteMask(bool r, bool g, bool b, bool a, bool depth);
@@ -625,8 +632,6 @@ namespace Graphics {
  }
  void Shutdown(Device& device);
 }
-# 2 "GraphicsWASM.cpp" 2
-# 15 "GraphicsWASM.cpp"
  typedef int i32;
  static_assert (sizeof(i32) == 4, "i32 should be defined as a 4 byte type");
 
@@ -679,9 +684,11 @@ extern "C" void wasmGraphics_DeviceBindTexture(int textureUnitEnum, int textureU
 extern "C" void wasmGraphics_DeviceSetUniform(int type, int slotId, int count, void* data);
 extern "C" void wasmGraphics_DeviceBindShader(int programId, unsigned int boundTextures);
 extern "C" void wasmGraphics_SetDefaultGLState();
-extern "C" void wasmGraphics_GetScissorAndViewport(void* scissorPtr, void* viewPtr);
+extern "C" void wasmGraphics_GetScissorAndViewport(void* scissorPtr, void* viewPtr); // Might need to make a "SetRect" function to support in wasm
 extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, const void* fShader, int fShaderLen);
-# 155 "GraphicsWASM.cpp"
+
+// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants#standard_webgl_1_constants
+// Helpers
 namespace Graphics {
  namespace Internal {
   void Assert(bool cond, const char* location, const char* msg) {
@@ -746,7 +753,7 @@ namespace Graphics {
   }
 
   inline GLenum GetTextureUnit(u32 index) {
-                                                                  ;
+   Graphics::Internal::Assert(index <= 32, "On line: " "219" ", in file: " "GraphicsWASM.cpp", "Only supports up to GL_TEXTURE16");
 
    return 0x84C0 + index;
   }
@@ -862,7 +869,7 @@ namespace Graphics {
     return 0x8814;
    }
 
-   return 0x81A6;
+   return 0x81A6; // Default to depth i guess
   }
 
   inline TextureFormatResult TextureGetDataFormatFromEnum(TextureFormat component) {
@@ -939,26 +946,26 @@ namespace Graphics {
    result.program = 0;
 
    int vLen = 0;
-                                                            ;
+   Graphics::Internal::Assert(vertexSource != 0, "On line: " "412" ", in file: " "GraphicsWASM.cpp", "Empty vertex pointer");
    for (const char* i = vertexSource; *i != '\0'; ++i, ++vLen);
    const char* vp1 = vertexSource + 1;
-                                                   ;
+   Graphics::Internal::Assert(vLen != 0, "On line: " "415" ", in file: " "GraphicsWASM.cpp", "Empty vertex shader");
 
    int fLen = 0;
-                                                                ;
+   Graphics::Internal::Assert(fragmentSource != 0, "On line: " "418" ", in file: " "GraphicsWASM.cpp", "Empty fragment pointer");
    for (const char* i = fragmentSource; *i != '\0'; ++i, ++fLen);
-                                                     ;
+   Graphics::Internal::Assert(fLen != 0, "On line: " "420" ", in file: " "GraphicsWASM.cpp", "Empty fragment shader");
 
    result.program = wasmGraphics_CompileShader(vertexSource, vLen, fragmentSource, fLen);
    result.success = result.program != 0;
-                                                             ;
+   Graphics::Internal::Assert(result.success, "On line: " "424" ", in file: " "GraphicsWASM.cpp", "Could not compile shader");
 
    return result;
   }
  }
 }
 
-
+/// Texture
 void Graphics::Texture::SetPCM(bool pcm) {
  GLenum attachTarget = 0x0DE1;
  if (mIsCubeMap) {
@@ -1002,7 +1009,7 @@ void Graphics::Texture::SetCubemap(void* rightData, void* leftData, void* topDat
  wasmGraphics_TextureSetCubemap(mId, internalFormat, width, height, f.dataFormat, f.dataType, rightData, leftData, topData, bottomData, backData, frontData, genMipMaps);
 }
 
-
+/// Device
 
 void Graphics::Device::SetFaceVisibility(CullFace cull, FaceWind wind) {
  bool enableCullFace = false;
@@ -1030,7 +1037,7 @@ void Graphics::Device::SetFaceVisibility(CullFace cull, FaceWind wind) {
    }
    cullFaceType = 0x0408;
   }
-  else {
+  else { // Off
    if (mFaceCulling != CullFace::Off) {
     disableCullFace = true;
    }
@@ -1069,7 +1076,7 @@ void Graphics::Device::SetDepthState(bool enable, DepthFunc depthFunc, f32* dept
    depthState = 0x0B71;
   }
   else {
-   depthState = 0;
+   depthState = 0; // Disabled
   }
   mDepth = enable;
  }
@@ -1121,10 +1128,10 @@ void Graphics::Device::SetBlendState(bool blend, f32* blendColor,
   GLenum dstAlpha = Internal::BlendfuncToEnum(blendDstAlpha);
   GLenum dstRgb = Internal::BlendfuncToEnum(blendDstRgb);
 
-  if (blendDstAlpha == blendDstRgb && blendSrcAlpha == blendSrcRGB) {
+  if (blendDstAlpha == blendDstRgb && blendSrcAlpha == blendSrcRGB) { // Same
    wasmGraphics_ChangeGLBlendFuncSame(srcRgb, dstRgb);
   }
-  else {
+  else { // Seperate
    wasmGraphics_ChangeGLBlendFuncSeperate(srcRgb, dstRgb, srcAlpha, dstAlpha);
   }
   mBlendDstAlpha = blendDstAlpha;
@@ -1137,10 +1144,10 @@ void Graphics::Device::SetBlendState(bool blend, f32* blendColor,
   GLenum alphaEquation = Internal::BlendEqToEnum(blendEquationAlpha);
   GLenum rgbEquation = Internal::BlendEqToEnum(blendEquationRgb);
 
-  if (blendEquationAlpha == blendEquationRgb) {
+  if (blendEquationAlpha == blendEquationRgb) { // Same
    wasmGraphics_ChangeGLBlendEquation(rgbEquation);
   }
-  else {
+  else { // Seperate
    wasmGraphics_ChangeGLBlendEquationSeparate(rgbEquation, alphaEquation);
   }
 
@@ -1236,13 +1243,13 @@ void Graphics::Device::Destroy(FrameBuffer* buffer) {
  wasmGraphics_DestroyFrameBuffer(buffer->mId);
  mBoundFrameBuffer = 0;
 
- if (buffer->mAllocPrev != 0) {
+ if (buffer->mAllocPrev != 0) { // Not head
   buffer->mAllocPrev->mAllocNext = buffer->mAllocNext;
   if (buffer->mAllocNext != 0) {
    buffer->mAllocNext->mAllocPrev = buffer->mAllocPrev;
   }
  }
- else {
+ else { // Head
   mAllocatedFrameBuffers = mAllocatedFrameBuffers->mAllocNext;
   if (mAllocatedFrameBuffers != 0) {
    mAllocatedFrameBuffers->mAllocPrev = 0;
@@ -1287,13 +1294,13 @@ Graphics::Buffer* Graphics::Device::CreateIndexBuffer() {
 void Graphics::Device::Destroy(Buffer* buff) {
  wasmGraphics_GLDestroyBuffer(buff->mId);
 
- if (buff->mAllocPrev != 0) {
+ if (buff->mAllocPrev != 0) { // Not head
   buff->mAllocPrev->mAllocNext = buff->mAllocNext;
   if (buff->mAllocNext != 0) {
    buff->mAllocNext->mAllocPrev = buff->mAllocPrev;
   }
  }
- else {
+ else { // Head
   mAllocatedBuffers = mAllocatedBuffers->mAllocNext;
   if (mAllocatedBuffers != 0) {
    mAllocatedBuffers->mAllocPrev = 0;
@@ -1324,13 +1331,13 @@ Graphics::VertexLayout* Graphics::Device::CreateVertexLayout() {
 void Graphics::Device::Destroy(VertexLayout* map) {
  wasmGraphics_GLDestroyVAO(map->mId);
 
- if (map->mAllocPrev != 0) {
+ if (map->mAllocPrev != 0) { // Not head
   map->mAllocPrev->mAllocNext = map->mAllocNext;
   if (map->mAllocNext != 0) {
    map->mAllocNext->mAllocPrev = map->mAllocPrev;
   }
  }
- else {
+ else { // Head
   mAllocatedStates = mAllocatedStates->mAllocNext;
   if (mAllocatedStates != 0) {
    mAllocatedStates->mAllocPrev = 0;
@@ -1373,13 +1380,13 @@ Graphics::Texture* Graphics::Device::CreateTexture(TextureFormat format) {
 void Graphics::Device::Destroy(Texture* buff) {
  wasmGraphics_GLDestroyTexture(buff->mId);
 
- if (buff->mAllocPrev != 0) {
+ if (buff->mAllocPrev != 0) { // Not head
   buff->mAllocPrev->mAllocNext = buff->mAllocNext;
   if (buff->mAllocNext != 0) {
    buff->mAllocNext->mAllocPrev = buff->mAllocPrev;
   }
  }
- else {
+ else { // Head
   mAllocatedTextures = mAllocatedTextures->mAllocNext;
   if (mAllocatedTextures != 0) {
    mAllocatedTextures->mAllocPrev = 0;
@@ -1394,7 +1401,7 @@ Graphics::Shader* Graphics::Device::CreateShader(const char* vertex, const char*
 
  Graphics::Internal::ShaderCompileResult compileStatus =
  Graphics::Internal::CompileOpenGLShader(vertex, fragment, &mPlatform);
-                                                                  ;
+ Graphics::Internal::Assert(compileStatus.success, "On line: " "867" ", in file: " "GraphicsWASM.cpp", "Failed to compile shader");
 
  if (compileStatus.success) {
   result = (Graphics::Shader*)mPlatform.Request(sizeof(Graphics::Shader));
@@ -1419,13 +1426,13 @@ void Graphics::Device::Destroy(Shader* shader) {
  mBoundProgram = 0;
  shader->mProgram = 0;
 
- if (shader->mAllocPrev != 0) {
+ if (shader->mAllocPrev != 0) { // Not head
   shader->mAllocPrev->mAllocNext = shader->mAllocNext;
   if (shader->mAllocNext != 0) {
    shader->mAllocNext->mAllocPrev = shader->mAllocPrev;
   }
  }
- else {
+ else { // Head
   mAllocatedShaders = mAllocatedShaders->mAllocNext;
   if (mAllocatedShaders != 0) {
    mAllocatedShaders->mAllocPrev = 0;
@@ -1460,7 +1467,7 @@ void Graphics::Device::SetRenderTarget(FrameBuffer* frameBuffer) {
   else {
    frameBuffer->mReadBufferConfig = 0x0404;
   }
-                                                                                ;
+  Graphics::Internal::Assert(numAttachments <= 8, "On line: " "933" ", in file: " "GraphicsWASM.cpp", "Only supports up to 8 color attachments");
  }
  else if (mBoundFrameBuffer != 0) {
   const u32 back_attach[1] = {0x0405};
@@ -1481,7 +1488,7 @@ void Graphics::Device::Bind(Shader* shader) {
  if (mBoundProgram != program) {
   mBoundProgram = program;
   u32 bound = 0;
-  {
+  { // Unbind any previously bound textures
    for (u32 i = 0; i < 32; ++i) {
     if (mBoundTextures[i].texture != 0) {
      mBoundTextures[i].texture = 0;
@@ -1497,8 +1504,8 @@ void Graphics::Device::Bind(Shader* shader) {
 }
 
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
-                                                      ;
-                                                                                          ;
+ Graphics::Internal::Assert(slot.valid, "On line: " "970" ", in file: " "GraphicsWASM.cpp", "Setting invalid uniform");
+ Graphics::Internal::Assert(slot.valid || (!slot.valid && slot.id != 0), "On line: " "971" ", in file: " "GraphicsWASM.cpp", "Something messed with slot");
  wasmGraphics_DeviceSetUniform((int)type, slot.id, count, data);
 }
 
@@ -1555,36 +1562,36 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
   target = 0x8513;
  }
 
-
+ // Find texture unit
  u32 textureUnit = 33;
  u32 firstFree = 33;
  for (u32 i = 0; i < 32; ++i) {
-  if (mBoundTextures[i].texture != 0) {
-   if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) {
+  if (mBoundTextures[i].texture != 0) { // Something is bound
+   if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
     textureUnit = i;
-                                                                                       ;
+    Graphics::Internal::Assert(target == mBoundTextures[i].target, "On line: " "1035" ", in file: " "GraphicsWASM.cpp", "Binding invalid texture types");
     break;
    }
   }
   else if (firstFree == 33) {
-                                                                                  ;
+   Graphics::Internal::Assert(!mBoundTextures[i].index.valid, "On line: " "1040" ", in file: " "GraphicsWASM.cpp", "free slot should not be valid");
    firstFree = i;
   }
  }
  if (textureUnit == 33) {
   textureUnit = firstFree;
   mBoundTextures[firstFree].index = uniformSlot;
-                                                                              ;
+  Graphics::Internal::Assert(mBoundTextures[firstFree].index.valid, "On line: " "1047" ", in file: " "GraphicsWASM.cpp", "Found invalid index");
   mBoundTextures[firstFree].target = target;
   mBoundTextures[firstFree].texture = &texture;
  }
-                                                         ;
+ Graphics::Internal::Assert(textureUnit < 33, "On line: " "1051" ", in file: " "GraphicsWASM.cpp", "Invalid texture unit");
 
 
  GLenum enumTextureUnit = Internal::GetTextureUnit(textureUnit);
 
  bool updateSampler = false;
-
+ // Set min and mag filter
  if (texture.mCachedMin != min) {
   updateSampler = true;
   texture.mCachedMin = min;
@@ -1594,7 +1601,7 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
   texture.mCachedMag = mag;
  }
 
-
+ // Set Wrap Mode
  if (texture.mCachedS != wrapS) {
   updateSampler = true;
   texture.mCachedS = wrapS;
@@ -1639,7 +1646,7 @@ Graphics::Device* Graphics::Initialize(Device& outDevice, Dependencies& alloc) {
  outDevice.mAllocatedShaders = 0;
  outDevice.mAllocatedFrameBuffers = 0;
 
-
+ // Blend State
  outDevice.mBlend = false;
 
  outDevice.mBlendColor[0] = 0.0f;
@@ -1655,17 +1662,17 @@ Graphics::Device* Graphics::Initialize(Device& outDevice, Dependencies& alloc) {
  outDevice.mBlendEquationAlpha = BlendEquation::Add;
  outDevice.mBlendEquationRGB = BlendEquation::Add;
 
-
+ // Cull state
  outDevice.mFaceCulling = CullFace::Back;
  outDevice.mWindingOrder = FaceWind::CounterClockwise;
 
-
+ // Depth state
  outDevice.mDepth = true;
  outDevice.mDepthFunc = DepthFunc::Less;
  outDevice.mDepthRange[0] = 0.0f;
  outDevice.mDepthRange[1] = 1.0f;
 
-
+ // Scissor state
  wasmGraphics_SetDefaultGLState();
  wasmGraphics_GetScissorAndViewport(outDevice.mScissorRect, outDevice.mViewportRect);
  outDevice.mScissor = false;
@@ -1677,17 +1684,17 @@ void Graphics::Shutdown(Device& device) {
  device.Bind(0);
  wasmGraphics_BindVAO(0);
 
-                                                                                   ;
-                                                                                  ;
-                                                                                 ;
-                                                                                  ;
-                                                                                       ;
+ Graphics::Internal::Assert(device.mAllocatedTextures == 0, "On line: " "1150" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedBuffers == 0, "On line: " "1151" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedStates == 0, "On line: " "1152" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedShaders == 0, "On line: " "1153" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
+ Graphics::Internal::Assert(device.mAllocatedFrameBuffers == 0, "On line: " "1154" ", in file: " "GraphicsWASM.cpp", "Not all memory has been released");
 
  device.mPlatform.Request = 0;
  device.mPlatform.Release = 0;
 }
 
-
+// Pipeline state
 void Graphics::VertexLayout::Set(const Index& index, const Buffer& buffer, const BufferView& view, u32 instanceDivisor) {
  GLenum type = Internal::BufferTypeToEnum(view.Type);
  wasmGraphics_VertexLayoutSet(mId, buffer.mId, index.id, view.NumberOfComponents, type, view.StrideInBytes, view.DataOffsetInBytes, instanceDivisor);
@@ -1704,7 +1711,7 @@ void Graphics::VertexLayout::Reset() {
  mId = wasmGraphics_ResetVertexLayout(mId);
 }
 
-
+// Shader
 
 Graphics::Index Graphics::Shader::GetAttribute(const char* name) {
  u32 wasmLen = 0;
@@ -1742,7 +1749,7 @@ Graphics::Index Graphics::Shader::GetUniform(const char* name) {
 }
 
 
-
+/// Buffer
 
 void Graphics::Buffer::Set(void* inputArray, u32 arraySizeInBytes, bool _static) {
  wasmGraphics_BufferSet(mIndexBuffer, mId, arraySizeInBytes, inputArray, _static);
@@ -1786,9 +1793,9 @@ u32 Graphics::FrameBuffer::GetHeight() {
  return 0;
 }
 
-
+/// Frame Buffer
 void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
- if (attachmentIndex > 5) {
+ if (attachmentIndex > 5) { // Limit to 6 color attachments
   attachmentIndex = 5;
  }
 
@@ -1860,8 +1867,8 @@ void Graphics::FrameBuffer::ResolveTo(FrameBuffer* target, Filter filter, bool c
  u32 width = GetWidth();
  u32 height = GetHeight();
 
-                                                                    ;
-                                                                      ;
+ Graphics::Internal::Assert(GetWidth() == target->GetWidth(), "On line: " "1333" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
+ Graphics::Internal::Assert(GetHeight() == target->GetHeight(), "On line: " "1334" ", in file: " "GraphicsWASM.cpp", "Invalid resolve");
 
  ResolveTo(target, filter, color, depth, 0, 0, width, height, 0, 0, width, height);
 }

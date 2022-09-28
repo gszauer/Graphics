@@ -473,8 +473,6 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 
 	GraphicsAssert(gLightmapMVP.valid, "(5) INvalid lightmap mvp?");
 
-	return;
-
 	float camX = FastSin(camTime) * cameraRadius;
 	float camZ = FastCos(camTime) * cameraRadius;
 	vec3 cameraPos = vec3(camX, cameraHeight, camZ);

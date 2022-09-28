@@ -177,7 +177,8 @@ Resources:
 #endif
 
 
-#if _WIN64
+#ifdef _WIN64
+	// _WIN64
 	#ifdef ATLAS_32
 		#error Can't define both 32 and 64 bit system
 	#endif
@@ -188,7 +189,8 @@ Resources:
 		static_assert (sizeof(ptr_type) == 8, "ptr_type should be defined as an 8 byte type on a 64 bit system");
 		static_assert (sizeof(diff_type) == 8, "diff_type should be defined as an 8 byte type on a 64 bit system");
 	}
-#elif _WIN32
+#elifdef _WIN32
+	// _WIN32
 	#ifdef ATLAS_64
 		#error Can't define both 32 and 64 bit system
 	#endif
@@ -200,7 +202,8 @@ Resources:
 		static_assert (sizeof(ptr_type) == 4, "ptr_type should be defined as a 4 byte type on a 32 bit system");
 		static_assert (sizeof(diff_type) == 4, "diff_type should be defined as a 4 byte type on a 32 bit system");
 	}
-#elif _WASM32
+#elifdef _WASM32
+	// _WASM32
 	#ifdef ATLAS_64
 		#error Can't define both 32 and 64 bit system
 	#endif
