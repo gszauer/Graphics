@@ -55,6 +55,7 @@
                 let deltaTime = (thisTime - lastTime) * 0.001;
 
                 program.instance.exports.UpdateSample(graphics.devicePtr, deltaTime);
+                program.instance.exports.RenderSample(graphics.devicePtr, 0, 0, 800, 600);
                 lastTime = thisTime;
             }
 

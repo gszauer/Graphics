@@ -409,8 +409,8 @@ void Update(Graphics::Device* g, float deltaTime) {
 	}
 
 	if (!isFinishedInitializing) {
-		isFinishedInitializing = true;
 		FinishInitializing(g);
+		isFinishedInitializing = true;
 		return;
 	}
 

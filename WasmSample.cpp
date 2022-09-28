@@ -51,3 +51,9 @@ export void StartSample(Graphics::Device* gfx) {
 export void UpdateSample(Graphics::Device* gfx, float dt) {
     Update(gfx, dt);
 }
+
+export void RenderSample(Graphics::Device * gfx, int x, int y, int w, int h) {
+    if (isFinishedInitializing) {
+        Render(gfx, x, y, w, h);
+    }
+}

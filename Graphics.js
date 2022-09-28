@@ -30,6 +30,8 @@ class GraphicsManager {
         this.shaders = [];
         this.shaders.push(null);
 
+        this.currentlyBoundShader = null;
+
         GlobalGraphicsManager = this;
     }
 
@@ -405,7 +407,7 @@ class GraphicsManager {
             GlobalGraphicsManager.gl.bindFramebuffer(GlobalGraphicsManager.gl.FRAMEBUFFER, fbo);
 
             if (int_numAttachments == 0) {
-                GlobalGraphicsManager.gl.drawBuffer(GlobalGraphicsManager.gl.NONE);
+                GlobalGraphicsManager.gl.drawBuffers([GlobalGraphicsManager.gl.NONE]);
                 GlobalGraphicsManager.gl.readBuffer(GlobalGraphicsManager.gl.NONE);
             }
             else {
@@ -551,13 +553,38 @@ class GraphicsManager {
         let program = GlobalGraphicsManager.shaders[int_program];
         const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
         let name = GlobalGraphicsManager.decoder.decode(array);
-        return GlobalGraphicsManager.gl.getUniformLocation(program, name);
+
+        let index = 0;
+        if (program.uniformIndexMap.hasOwnProperty(name)) {
+            index = program.uniformIndexMap[name];
+        }
+        else {
+            program.uniformIndexObjects.push(GlobalGraphicsManager.gl.getUniformLocation(program, name));
+            program.uniformIndexMap[name] = program.uniformIndexObjects.length - 1;
+            index = program.uniformIndexObjects.length - 1;
+        }
+        return index;
     }
 
     wasmGraphics_ShaderGetAttribute(int_program, ptr_name, int_name_len) {
         let program = GlobalGraphicsManager.shaders[int_program];
         const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
-        return GlobalGraphicsManager.gl.getAttribLocation(program, GlobalGraphicsManager.decoder.decode(array));
+        let name = GlobalGraphicsManager.decoder.decode(array);
+
+        let index = 0;
+        if (program.attributeIndexMap.hasOwnProperty(name)) {
+            index = program.attributeIndexMap[name];
+        }
+        else {
+            program.attributeIndexObjects.push(GlobalGraphicsManager.gl.getAttribLocation(program, name));
+            program.attributeIndexMap[name] = program.attributeIndexObjects.length - 1;
+            index = program.attributeIndexObjects.length - 1;
+        }
+        // TODO: All attributes are currently bad, since the attrib indices are now tucked into the program.
+        // Going to have to update any place that uses attributes to use this new indexing scheme, the same
+        // way that uniforms do. But, before that, i need to make uniforms work. 
+        // Currently, binding textures appears to be broken. 
+        return index;
     }
 
     wasmGraphics_BindVAO(int_vaoId) {
@@ -579,49 +606,54 @@ class GraphicsManager {
             GlobalGraphicsManager.gl.texParameteri(int_textureTarget, GlobalGraphicsManager.gl.TEXTURE_WRAP_R, int_wrapR);
         }
 
-	    GlobalGraphicsManager.gl.uniform1i(int_uniformSlot, int_textureUnitIndex);
+        let program = GlobalGraphicsManager.currentlyBoundShader;
+        let slot = program.uniformIndexObjects[int_uniformSlot];
+	    GlobalGraphicsManager.gl.uniform1i(slot, Number(int_textureUnitIndex));
     }
 
     wasmGraphics_DeviceSetUniform(int_type, int_slotId, int_count, ptr_data) {
+        let program = GlobalGraphicsManager.currentlyBoundShader;
+        let slot = program.uniformIndexObjects[int_slotId];
+
         if (int_type == 0/* UniformType::Int1 */) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/);
-            GlobalGraphicsManager.gl.Uniform1iv(int_slotId, int_count, data);
+            let intData = new Int32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 1);
+            GlobalGraphicsManager.gl.Uniform1iv(slot, intData);
         }
         else if (int_type == 1/*UniformType::Int2*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 2);
-            GlobalGraphicsManager.gl.uniform2iv(int_slotId, int_count, data);
+            let intData = new Int32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 2);
+            GlobalGraphicsManager.gl.uniform2iv(slot, intData);
         }
         else if (int_type == 2/*UniformType::Int3*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 3);
-            GlobalGraphicsManager.gl.uniform3iv(int_slotId, int_count, data);
+            let intData = new Int32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 3);
+            GlobalGraphicsManager.gl.uniform3iv(slot, intData);
         }
         else if (int_type == 3/*UniformType::Int4*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(i32)*/ * 4);
-            GlobalGraphicsManager.gl.uniform4iv(int_slotId, int_count, data);
+            let intData = new Int32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4);
+            GlobalGraphicsManager.gl.uniform4iv(slot, intData);
         }
         else if (int_type == 4/*UniformType::Float1*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/);
-            GlobalGraphicsManager.gl.uniform1fv(int_slotId, int_count, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 1);
+            GlobalGraphicsManager.gl.uniform1fv(slot, floatData);
         }
         else if (int_type == 5/*UniformType::Float2*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 2);
-            GlobalGraphicsManager.gl.uniform2fv(int_slotId, int_count, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 2);
+            GlobalGraphicsManager.gl.uniform2fv(slot, floatData);
         }
         else if (int_type == 6/*UniformType::Float3*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 3);
-            GlobalGraphicsManager.gl.uniform3fv(int_slotId, int_count, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count *3);
+            GlobalGraphicsManager.gl.uniform3fv(slot, floatData);
         }
         else if (int_type == 7/*UniformType::Float4*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 4);
-            GlobalGraphicsManager.gl.uniform4fv(int_slotId, int_count, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count *4);
+            GlobalGraphicsManager.gl.uniform4fv(slot, floatData);
         }
         else if (int_type == 8/*UniformType::Float9*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 9);
-            GlobalGraphicsManager.gl.uniformMatrix3fv(int_slotId, int_count, GlobalGraphicsManager.gl.FALSE, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 9);
+            GlobalGraphicsManager.gl.uniformMatrix3fv(slot, GlobalGraphicsManager.gl.FALSE, floatData);
         }
         else if (int_type == 9/*UniformType::Float16*/) {
-            let data = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 4/*sizeof(f32)*/ * 16);
-            GlobalGraphicsManager.gl.uniformMatrix4fv(int_slotId, int_count, GlobalGraphicsManager.gl.FALSE, data);
+            let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 16);
+            GlobalGraphicsManager.gl.uniformMatrix4fv(slot, GlobalGraphicsManager.gl.FALSE, floatData);
         }
     }
 
@@ -629,6 +661,8 @@ class GraphicsManager {
         let shader = GlobalGraphicsManager.shaders[int_programId];
 
 		GlobalGraphicsManager.gl.useProgram(shader);
+        GlobalGraphicsManager.currentlyBoundShader = shader;
+
         for (let i = 0; i < 32; ++i) {
             let set = int_boundTextures & (1 << i);
             if (set) {
@@ -726,6 +760,11 @@ class GraphicsManager {
             insertIndex = GlobalGraphicsManager.shaders.length;
             GlobalGraphicsManager.shaders.push(shaderProgram);
         }
+
+        shaderProgram.uniformIndexMap = {};
+        shaderProgram.uniformIndexObjects = [];
+        shaderProgram.attributeIndexMap = {};
+        shaderProgram.attributeIndexObjects = [];
 
         return insertIndex;
     }
