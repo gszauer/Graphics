@@ -48,12 +48,19 @@ export void StartSample(Graphics::Device* gfx) {
     Initialize(&deps, gfx);
 }
 
+int allowRenderToRun = 5;
 export void UpdateSample(Graphics::Device* gfx, float dt) {
+    if (isFinishedInitializing) {
+        allowRenderToRun -= 1;
+        if (allowRenderToRun < 0) {
+            allowRenderToRun = 0;
+        }
+    }
     Update(gfx, dt);
 }
 
 export void RenderSample(Graphics::Device * gfx, int x, int y, int w, int h) {
-    if (isFinishedInitializing) {
+    if (isFinishedInitializing && allowRenderToRun == 0) {
         Render(gfx, x, y, w, h);
     }
 }

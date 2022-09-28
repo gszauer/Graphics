@@ -1000,6 +1000,7 @@ void Graphics::Device::Bind(Shader* shader) {
 }
 
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
+	GraphicsAssert(slot.valid, "Setting invalid uniform");
 	if (type == UniformType::Int1) {
 		glUniform1iv(slot.id, count, (const GLint*)data);
 	}
@@ -1090,7 +1091,7 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 	u32 firstFree = 33;
 	for (u32 i = 0; i < 32; ++i) {
 		if (mBoundTextures[i].texture != 0) { // Something is bound
-			if (mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
+			if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
 				textureUnit = i;
 				GraphicsAssert(target == mBoundTextures[i].target, "Binding invalid texture types");
 				break;
@@ -1137,6 +1138,7 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 		}
 	}
 
+	GraphicsAssert(uniformSlot.valid, "Setting invalid uniform");
 	glUniform1i(uniformSlot.id, textureUnit);
 }
 

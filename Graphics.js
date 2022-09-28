@@ -554,15 +554,21 @@ class GraphicsManager {
         const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
         let name = GlobalGraphicsManager.decoder.decode(array);
 
-        let index = 0;
         if (program.uniformIndexMap.hasOwnProperty(name)) {
-            index = program.uniformIndexMap[name];
+            return program.uniformIndexMap[name];
         }
-        else {
-            program.uniformIndexObjects.push(GlobalGraphicsManager.gl.getUniformLocation(program, name));
-            program.uniformIndexMap[name] = program.uniformIndexObjects.length - 1;
-            index = program.uniformIndexObjects.length - 1;
+
+        let uniformLocation = GlobalGraphicsManager.gl.getUniformLocation(program, name);
+        if (uniformLocation == null) {
+            return -1;
         }
+
+        program.uniformIndexObjects.push(uniformLocation);
+        let index = program.uniformIndexObjects.length - 1;
+
+        program.uniformIndexMap[name] = index;
+        program.uniformIndexObjects[index].uniformName = name;
+        
         return index;
     }
 
@@ -579,6 +585,7 @@ class GraphicsManager {
             program.attributeIndexObjects.push(GlobalGraphicsManager.gl.getAttribLocation(program, name));
             program.attributeIndexMap[name] = program.attributeIndexObjects.length - 1;
             index = program.attributeIndexObjects.length - 1;
+            //program.attributeIndexObjects[index].attributeName = name;
         }
         // TODO: All attributes are currently bad, since the attrib indices are now tucked into the program.
         // Going to have to update any place that uses attributes to use this new indexing scheme, the same
@@ -608,12 +615,12 @@ class GraphicsManager {
 
         let program = GlobalGraphicsManager.currentlyBoundShader;
         let slot = program.uniformIndexObjects[int_uniformSlot];
-	    GlobalGraphicsManager.gl.uniform1i(slot, Number(int_textureUnitIndex));
+	    GlobalGraphicsManager.gl.uniform1i(slot, int_textureId);
     }
 
     wasmGraphics_DeviceSetUniform(int_type, int_slotId, int_count, ptr_data) {
         let program = GlobalGraphicsManager.currentlyBoundShader;
-        let slot = program.uniformIndexObjects[int_slotId];
+        let slot = program.uniformIndexObjects[int_slotId]; // TODO: The problem is slotId, it's always 0
 
         if (int_type == 0/* UniformType::Int1 */) {
             let intData = new Int32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 1);
@@ -765,6 +772,9 @@ class GraphicsManager {
         shaderProgram.uniformIndexObjects = [];
         shaderProgram.attributeIndexMap = {};
         shaderProgram.attributeIndexObjects = [];
+
+        shaderProgram.vertexShaderStr =vertexShaderStr;
+        shaderProgram.fragmentShaderStr = fragmentShaderStr;
 
         return insertIndex;
     }

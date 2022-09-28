@@ -967,6 +967,8 @@ void Graphics::Device::Bind(Shader* shader) {
 }
 
 void Graphics::Device::Bind(Index& slot, UniformType type, void* data, u32 count) {
+	GraphicsAssert(slot.valid, "Setting invalid uniform");
+	GraphicsAssert(slot.valid || (!slot.valid && slot.id != 0), "Something messed with slot");
 	wasmGraphics_DeviceSetUniform((int)type, slot.id, count, data);
 }
 
@@ -1028,19 +1030,21 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 	u32 firstFree = 33;
 	for (u32 i = 0; i < 32; ++i) {
 		if (mBoundTextures[i].texture != 0) { // Something is bound
-			if (mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
+			if (mBoundTextures[i].index.valid && mBoundTextures[i].index.id == uniformSlot.id) { // Re-use
 				textureUnit = i;
 				GraphicsAssert(target == mBoundTextures[i].target, "Binding invalid texture types");
 				break;
 			}
 		}
 		else if (firstFree == 33) {
+			GraphicsAssert(!mBoundTextures[i].index.valid, "free slot should not be valid");
 			firstFree = i;
 		}
 	}
 	if (textureUnit == 33) {
 		textureUnit = firstFree;
 		mBoundTextures[firstFree].index = uniformSlot;
+		GraphicsAssert(mBoundTextures[firstFree].index.valid, "Found invalid index");
 		mBoundTextures[firstFree].target = target;
 		mBoundTextures[firstFree].texture = &texture;
 	}

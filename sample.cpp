@@ -4,6 +4,8 @@
 
 #define SHADOWMAP_RES 512
 
+Graphics::Index			gLightmapMVP;
+
 Graphics::FrameBuffer*  gLightmapFBO;
 Graphics::Texture*		gLightmapDepth;
 Graphics::Texture*		gLightmapColor;
@@ -14,7 +16,6 @@ Graphics::Index			gLightmapFboAttachment;
 Graphics::VertexLayout*	gLightmapMesh;
 Graphics::VertexLayout* gLightmapSkullLayout;
 Graphics::VertexLayout* gLightmapPlaneLayout;
-Graphics::Index			gLightmapMVP;
 
 Graphics::Shader* gLitShader;
 Graphics::Shader* gLitShaderPCM;
@@ -86,6 +87,16 @@ u32 numFilesToLoad;
 bool isFinishedInitializing;
 
 Graphics::Device* globalDevice;
+
+#ifndef GraphicsAssert
+void Win32Assert(bool cond, const char* msg) {
+	if (!cond) {
+		char* devnull = (char*)0;
+		*devnull = 'a';
+	}
+}
+#define GraphicsAssert(x, y) Win32Assert(x, y);
+#endif
 
 void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	IsRunning = true;
@@ -204,7 +215,7 @@ void FinishInitializing(Graphics::Device* gfx) {
 
 	gLightmapSkullLayout = gfx->CreateVertexLayout();
 	Graphics::Index lightmapPositionAttrib = gLightmapDrawShader->GetAttribute("position");
-	gLightmapMVP = gLightmapDrawShader->GetUniform("mvp");
+	
 
 	gLightmapPlaneLayout = gfx->CreateVertexLayout();
 
@@ -396,6 +407,9 @@ void FinishInitializing(Graphics::Device* gfx) {
 
 	gfx->SetDepthState(true);
 
+	gLightmapMVP = gLightmapDrawShader->GetUniform("mvp");
+	GraphicsAssert(gLightmapMVP.valid, "INvalid lightmap mvp?");
+
 	isFinishedInitializing = true;
 }
 
@@ -411,8 +425,10 @@ void Update(Graphics::Device* g, float deltaTime) {
 	if (!isFinishedInitializing) {
 		FinishInitializing(g);
 		isFinishedInitializing = true;
+		GraphicsAssert(gLightmapMVP.valid, "(3) INvalid lightmap mvp?");
 		return;
 	}
+	GraphicsAssert(gLightmapMVP.valid, "(4) INvalid lightmap mvp?");
 
 	if (lastPCM != enablePCM) {
 		gLightmapDepth->SetPCM(enablePCM);
@@ -449,6 +465,15 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	if (!IsRunning) {
 		return;
 	}
+	if (!isFinishedInitializing) {
+		return;
+	}
+	IsRunning = false;
+
+
+	GraphicsAssert(gLightmapMVP.valid, "(5) INvalid lightmap mvp?");
+
+	return;
 
 	float camX = FastSin(camTime) * cameraRadius;
 	float camZ = FastCos(camTime) * cameraRadius;
@@ -492,15 +517,21 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 
 		gfx->Bind(gLightmapDrawShader);
 		mat4 mvp = ShadowProjection * ShadowView * model1;
+		GraphicsAssert(gLightmapMVP.valid, "(2) INvalid lightmap mvp?");
 		gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
+		GraphicsAssert(gLightmapMVP.valid, "(a) INvalid lightmap mvp?");
 		gfx->Draw(*gLightmapSkullLayout, Graphics::DrawMode::Triangles, 0, gLightmapSkullLayout->GetUserData());
 
 		mvp = ShadowProjection* ShadowView* model2;
+		GraphicsAssert(gLightmapMVP.valid, "(b) INvalid lightmap mvp?");
 		gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
+		GraphicsAssert(gLightmapMVP.valid, "(c) INvalid lightmap mvp?");
 		gfx->Draw(*gLightmapSkullLayout, Graphics::DrawMode::Triangles, 0, gLightmapSkullLayout->GetUserData());
 
 		mvp = ShadowProjection * ShadowView * model3;
+		GraphicsAssert(gLightmapMVP.valid, "(d) INvalid lightmap mvp?");
 		gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
+		GraphicsAssert(gLightmapMVP.valid, "(e INvalid lightmap mvp?");
 		//gfx->Draw(*gLightmapPlaneLayout, Graphics::DrawMode::Triangles, 0, gLightmapPlaneLayout->GetUserData());
 
 		gfx->SetRenderTarget(0);

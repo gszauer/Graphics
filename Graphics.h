@@ -147,6 +147,17 @@ namespace Graphics {
 			id = _id;
 			valid = _valid;
 		}
+
+		inline Index(const Index& o) {
+			id = o.id;
+			valid = o.valid;
+		}
+
+		inline Index& operator=(const Index& o) {
+			id = o.id;
+			valid = o.valid;
+			return *this;
+		}
 	};
 
 	struct Sampler {

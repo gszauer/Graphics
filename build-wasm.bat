@@ -1,5 +1,8 @@
 @echo off
 
+C:/WASM/clang.exe -E GraphicsWASM.cpp -o GraphicsExpanded.cpp
+C:/WASM/clang.exe inflate GraphicsWASM.cpp
+
 C:/WASM/clang.exe -x c++ ^
     --target=wasm32 ^
     -nostdinc ^
