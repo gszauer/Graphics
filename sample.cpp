@@ -558,8 +558,8 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	{ // Draw lightmap
 		gfx->SetRenderTarget(gLightmapFBO);
 		gfx->SetViewport(0, 0, SHADOWMAP_RES, SHADOWMAP_RES);
-		gfx->Clear(0.0f);
-#if 0
+		gfx->Clear(1.0f);
+#if 1
 		gfx->Bind(gLightmapDrawShader);
 		mat4 mvp = ShadowProjection * ShadowView * model1;
 		GraphicsAssert(gLightmapMVP.valid, "(2) INvalid lightmap mvp?");
