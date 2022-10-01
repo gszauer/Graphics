@@ -154,6 +154,7 @@ namespace Graphics {
 	struct Sampler {
 		WrapMode wrapS;
 		WrapMode wrapT;
+		// TODO: Add PCM here instead of texture?
 		Filter min; // Downscale
 		Filter mip; // Mipmap transition
 		Filter mag; // Upscale
@@ -174,12 +175,12 @@ namespace Graphics {
 			mag = _mag;
 		}
 
-		inline Sampler(WrapMode _wrap) {
+		inline Sampler(WrapMode _wrap, Filter _filter) {
 			wrapS = _wrap;
 			wrapT = _wrap;
-			min = Filter::Linear;
-			mip = Filter::Linear;
-			mag = Filter::Linear;
+			min = _filter;
+			mip = _filter;
+			mag = _filter;
 		}
 	};
 
@@ -200,10 +201,11 @@ namespace Graphics {
 		}
 	};
 
-	// I'm going to keep the concept of a depth texture for now, and check
-	// how to use the extension in webgl. If htat doesn't work, then using a
-	// renderbuffer when TextureFormat::Depth instead of a texture object
-	// but i don't think compatibility is going to be that big of an issue.
+	// Making both depth texture and color texture be the same texture was a mistake
+	// There should be three types of texture: ColorTexture, DepthTexture, and DataTexture
+	// additionally we may want to have a ColorCubemap and a DepthCubeMap. Having all of 
+	// these textures in seperate classes will bloat the API considerably, but trying
+	// to wrangle them all under Texture has been a nightmare.
 	class Texture { // These are texture objects
 		friend class Device;
 		friend class FrameBuffer;

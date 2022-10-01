@@ -443,9 +443,9 @@ void Graphics::Texture::SetPCM(bool pcm) {
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	}
-	else {
+	else { // TODO: None is wrong
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_NONE);
+		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	}
 	glBindTexture(attachTarget, 0);
 }
@@ -1028,6 +1028,9 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 	else {
 		if (sampler.min == Filter::Linear) {
 			min = GL_LINEAR;
+		}
+		else {
+			min = GL_NEAREST;
 		}
 	}
 

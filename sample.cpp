@@ -2,7 +2,7 @@
 #include "math.h"
 #include "FileLoaders.h"
 
-#define SHADOWMAP_RES 512
+#define SHADOWMAP_RES 1024
 
 Graphics::Index			gLightmapMVP;
 
@@ -106,8 +106,6 @@ void Win32Assert(bool cond, const char* msg) {
 void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	IsRunning = true;
 	isFinishedInitializing = false;
-	enablePCM = true;
-	lastPCM = true;
 	ambientOnly = 0.0f;
 
 	cameraRadius = 7.0f;
@@ -117,12 +115,20 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	cameraTarget.y = 0.0f;
 
 	globalDevice = gfx;
+	gLitNoPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
+	gLitWithPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
 
 	gLightmapFBO = gfx->CreateFrameBuffer();
 	gLightmapColor = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, SHADOWMAP_RES, SHADOWMAP_RES);
 	gLightmapDepth = gfx->CreateTexture(Graphics::TextureFormat::Depth, SHADOWMAP_RES, SHADOWMAP_RES, 0, Graphics::TextureFormat::Depth, false);
+	
+	enablePCM = false;
+	lastPCM   = false;
+	gLightmapDepth->SetPCM(false);
+	gPCMState = gLitNoPCM;
+	gLightmapFBO->AttachDepth(*gLightmapDepth, false);
+
 	//gLightmapFBO->AttachColor(*gLightmapColor);
-	gLightmapFBO->AttachDepth(*gLightmapDepth);
 	GraphicsAssert(gLightmapFBO->IsValid(), "Invalid fbo");
 
 	numFilesToLoad = 15;
@@ -173,8 +179,8 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 		planeMesh = file;
 		numFilesToLoad -= 1;
 		});
-	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
-		skullNormal = file;
+	LoadTexture("assets/Skull_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
+		skullAlbedo = file;
 		numFilesToLoad -= 1;
 		});
 	LoadTexture("assets/Plane_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
@@ -185,8 +191,8 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 		planeNormal = file;
 		numFilesToLoad -= 1;
 		});
-	LoadTexture("assets/Skull_AlbedoSpec.texture", [](const char* path, TextureFile* file) {
-		skullAlbedo = file;
+	LoadTexture("assets/Skull_Normal.texture", [](const char* path, TextureFile* file) {
+		skullNormal = file;
 		numFilesToLoad -= 1;
 		});
 }
@@ -233,10 +239,6 @@ void FinishInitializing(Graphics::Device* gfx) {
 	//PCMState* gPCMState;
 	//PCMState* gLitNoPCM;
 	//PCMState* gLitWithPCM;
-
-	gLitNoPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
-	gLitWithPCM = (PCMState*)gfx->Allocate(sizeof(PCMState));
-	gPCMState = gLitWithPCM;
 
 	gLitNoPCM->shader = gfx->CreateShader(lit_vShader->text, lit_fShader->text);
 	ReleaseText(lit_fShader);
@@ -479,9 +481,11 @@ void Update(Graphics::Device* g, float deltaTime) {
 		gLightmapDepth->SetPCM(enablePCM);
 		if (enablePCM) {
 			gPCMState = gLitWithPCM;
+			gLightmapDepth->SetPCM(true);
 		}
 		else {
 			gPCMState = gLitNoPCM;
+			gLightmapDepth->SetPCM(false);
 		}
 		lastPCM = enablePCM;
 	}
@@ -513,9 +517,6 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	if (!isFinishedInitializing) {
 		return;
 	}
-#ifndef _WIN64
-	IsRunning = false;
-#endif // !_WIN64
 
 	GraphicsAssert(gLightmapMVP.valid, "(5) INvalid lightmap mvp?");
 
@@ -542,7 +543,7 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	vec3 HemiTop = vec3(0.3f, 0.3f, 0.3f);
 	vec3 HemiBottom = vec3(ambient, ambient, ambient);
 	Graphics::Sampler sampler;
-	Graphics::Sampler depthSampler;
+	Graphics::Sampler depthSampler(Graphics::Filter::Nearest, Graphics::Filter::Nearest, Graphics::Filter::Nearest);
 
 	vec3 lightCameraPosition = cameraTarget - normalized(lightDir) * 10.0f;
 	mat4 ShadowView = lookAt(lightCameraPosition, cameraTarget, vec3(0, 1, 0));
@@ -557,8 +558,8 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	{ // Draw lightmap
 		gfx->SetRenderTarget(gLightmapFBO);
 		gfx->SetViewport(0, 0, SHADOWMAP_RES, SHADOWMAP_RES);
-		gfx->Clear(1.0f, 1.0f, 1.0f, 1.0f);
-
+		gfx->Clear(0.0f);
+#if 0
 		gfx->Bind(gLightmapDrawShader);
 		mat4 mvp = ShadowProjection * ShadowView * model1;
 		GraphicsAssert(gLightmapMVP.valid, "(2) INvalid lightmap mvp?");
@@ -577,9 +578,8 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->Bind(gLightmapMVP, Graphics::UniformType::Float16, mvp.v);
 		GraphicsAssert(gLightmapMVP.valid, "(e INvalid lightmap mvp?");
 		//gfx->Draw(*gLightmapPlaneLayout, Graphics::DrawMode::Triangles, 0, gLightmapPlaneLayout->GetUserData());
-
-		gfx->SetRenderTarget(0);
-		gfx->SetViewport(0, 0, 800, 600);
+#endif
+		
 	}
 
 	mat4 shadowMatrix1 = shadowMapAdjustment * ShadowProjection * ShadowView * model1;
@@ -588,6 +588,8 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 
 
 	{ // Draw scene
+		gfx->SetRenderTarget(0);
+		gfx->SetViewport(0, 0, 800, 600);
 		gfx->Clear(0.4, 0.5, 0.6, 1.0);
 		gfx->Bind(gHemiShader);
 
@@ -612,9 +614,10 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->Bind(gPCMState->viewIndex, Graphics::UniformType::Float16, view.v);
 		gfx->Bind(gPCMState->projectionIndex, Graphics::UniformType::Float16, projection.v);
 
-		gfx->Bind(gPCMState->albedoIndex, *gSkullTextureAlbedo, sampler);
-		gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
 		gfx->Bind(gPCMState->normalIndex, *gSkullTextureNormal, sampler);
+		gfx->Bind(gPCMState->albedoIndex, *gSkullTextureAlbedo, sampler);
+		GraphicsAssert(gPCMState->normalIndex.id != gPCMState->albedoIndex.id, "Bad ID's");
+		gfx->Bind(gPCMState->lightmapIndex, *gLightmapDepth, depthSampler);
 		gfx->Bind(gPCMState->lightDirection, Graphics::UniformType::Float3, lightDir.v);
 		gfx->Bind(gPCMState->lightColor, Graphics::UniformType::Float3, lightColor.v);
 		gfx->Bind(gPCMState->viewPos, Graphics::UniformType::Float3, cameraPos.v);
@@ -642,7 +645,7 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 
 		gfx->Bind(gLightmapBlitShader);
 		//gfx->Bind(gLightmapFboAttachment, *gLightmapColor, sampler);
-		gfx->Bind(gLightmapFboAttachment, *gLightmapDepth, sampler);
+		gfx->Bind(gLightmapFboAttachment, *gLightmapDepth, depthSampler);
 		gfx->Draw(*gLightmapMesh, Graphics::DrawMode::TriangleStrip, 0, gLightmapMesh->GetUserData());
 		gfx->SetViewport(0, 0, 800, 600);
 	}

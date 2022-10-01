@@ -33,6 +33,14 @@ class GraphicsManager {
         this.currentlyBoundShader = null;
 
         GlobalGraphicsManager = this;
+
+        this.CheckError = function() { // TODO: Remove calls to CheckError from in this file. Add to main loop.
+            let glError = GlobalGraphicsManager.gl.getError();
+            if (glError != GlobalGraphicsManager.gl.NO_ERROR) {
+                console.error("gl Error");
+            }
+            return glError;
+        }
     }
 
     InjectWebAssemblyImportObject(wasmImportObject) {
@@ -42,7 +50,6 @@ class GraphicsManager {
         GlobalGraphicsManager.env.wasmGraphics_Log = GlobalGraphicsManager.wasmGraphics_Log;
         GlobalGraphicsManager.env.wasmGraphics_SetTexturePCM = GlobalGraphicsManager.wasmGraphics_SetTexturePCM;
         GlobalGraphicsManager.env.wasmGraphics_TextureSetData = GlobalGraphicsManager.wasmGraphics_TextureSetData;
-        GlobalGraphicsManager.env.wasmGraphics_TextureSetCubemap = GlobalGraphicsManager.wasmGraphics_TextureSetCubemap;
         GlobalGraphicsManager.env.wasmGraphics_DeviceSetFaceVisibility = GlobalGraphicsManager.wasmGraphics_DeviceSetFaceVisibility;
         GlobalGraphicsManager.env.wasmGraphics_DeviceClearRGBAD = GlobalGraphicsManager.wasmGraphics_DeviceClearRGBAD;
         GlobalGraphicsManager.env.wasmGraphics_SetDepthState = GlobalGraphicsManager.wasmGraphics_SetDepthState;
@@ -132,6 +139,17 @@ class GraphicsManager {
             GlobalGraphicsManager.textures.push(glTexture);
         }
 
+        // TODO: Remove these, only adding to investigate bad normals
+        if (insertIndex == 2) {
+            glTexture.debugName = "Shadowmap";
+        }
+        if (insertIndex == 3) {
+            glTexture.debugName = "albedo";
+        }
+        if (insertIndex == 4) {
+            glTexture.debugName = "Normal";
+        }
+
         return insertIndex;
     }
 
@@ -177,7 +195,7 @@ class GraphicsManager {
     }
 
     wasmGraphics_BufferReset(int_bufferId) {
-        GlobalGraphicsManager.wasmGraphics_GLDestroyBuffer(GlobalGraphicsManager.int_bufferId);
+        GlobalGraphicsManager.wasmGraphics_GLDestroyBuffer(int_bufferId);
 	    return GlobalGraphicsManager.wasmGraphics_GLGenBuffer();
     }
 
@@ -246,21 +264,29 @@ class GraphicsManager {
     }
 
     wasmGraphics_TextureSetData(int_glTextureId, int_glInternalFormat, int_width, int_height, int_glDataFormat, int_glDataFormatType, ptr_data, bool_genMipMaps) {
+        if (int_width == 0 || int_height == 0) {
+            console.log("Bad size");
+        }
+
         let texture = GlobalGraphicsManager.textures[int_glTextureId];
         
         GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, texture); 
-        if (int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT24) {
-            //GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, GlobalGraphicsManager.gl.DEPTH_COMPONENT, int_glDataFormatType, null);
-            GlobalGraphicsManager.gl.texStorage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height);
+        let isDepth = int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT24 ||
+                        int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT16 ||
+                        int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT32F ||
+                        int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH32F_STENCIL8 ||
+                        int_glInternalFormat == GlobalGraphicsManager.gl.DEPTH_COMPONENT;
+        if (isDepth) {
+            GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, GlobalGraphicsManager.gl.DEPTH_COMPONENT, int_glDataFormatType, null);
+            //GlobalGraphicsManager.gl.texStorage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height);
         }
         else {
-            if (ptr_data == 0 || ptr_data == null) {
-                GlobalGraphicsManager.gl.texStorage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height);
+            if (ptr_data == 0) {
+                ptr_data = null;
             }
-            else {
             GlobalGraphicsManager.gl.texImage2D(GlobalGraphicsManager.gl.TEXTURE_2D, 0, int_glInternalFormat, int_width, int_height, 0, int_glDataFormat, int_glDataFormatType, GlobalGraphicsManager.memory_u8, ptr_data);
-            }
         }
+
         if (bool_genMipMaps) {
             GlobalGraphicsManager.gl.generateMipmap(GlobalGraphicsManager.gl.TEXTURE_2D);
         }
@@ -442,7 +468,7 @@ class GraphicsManager {
 
         GlobalGraphicsManager.gl.bindVertexArray(vao);
         GlobalGraphicsManager.gl.bindBuffer(GlobalGraphicsManager.gl.ARRAY_BUFFER, buffer);
-        GlobalGraphicsManager.gl.vertexAttribPointer(int_slotId, int_numComponents, int_type, GlobalGraphicsManager.gl.FALSE, int_stride, int_offset);
+        GlobalGraphicsManager.gl.vertexAttribPointer(int_slotId, int_numComponents, int_type, false, int_stride, int_offset);
         GlobalGraphicsManager.gl.enableVertexAttribArray(int_slotId);
         GlobalGraphicsManager.gl.vertexAttribDivisor(int_slotId, int_divisor);
         GlobalGraphicsManager.gl.bindVertexArray(null);
@@ -480,6 +506,11 @@ class GraphicsManager {
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.COMPARE_REF_TO_TEXTURE);
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
         }
+        /*else { // Hmmmmmm
+            GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.COMPARE_REF_TO_TEXTURE);
+            GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
+        }*/
+        GlobalGraphicsManager.CheckError();
         GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MIN_FILTER, GlobalGraphicsManager.gl.LINEAR);
 		GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MAG_FILTER, GlobalGraphicsManager.gl.LINEAR);
 	    GlobalGraphicsManager.gl.framebufferTexture2D(GlobalGraphicsManager.gl.FRAMEBUFFER, GlobalGraphicsManager.gl.DEPTH_ATTACHMENT, int_attachTarget, texture, 0);
@@ -529,14 +560,15 @@ class GraphicsManager {
 
     wasmGraphics_ShaderGetUniform(int_program, ptr_name, int_name_len) {
         let program = GlobalGraphicsManager.shaders[int_program];
-        const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
-        let name = GlobalGraphicsManager.decoder.decode(array);
+        const _array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
+        let name = GlobalGraphicsManager.decoder.decode(_array);
 
         if (program.uniformIndexMap.hasOwnProperty(name)) {
             return program.uniformIndexMap[name];
         }
 
         let uniformLocation = GlobalGraphicsManager.gl.getUniformLocation(program, name);
+
         if (uniformLocation == null) {
             return -1;
         }
@@ -552,24 +584,10 @@ class GraphicsManager {
 
     wasmGraphics_ShaderGetAttribute(int_program, ptr_name, int_name_len) {
         let program = GlobalGraphicsManager.shaders[int_program];
-        const array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
-        let name = GlobalGraphicsManager.decoder.decode(array);
+        const _array = new Uint8Array(GlobalGraphicsManager.memory.buffer, ptr_name, int_name_len);
+        let name = GlobalGraphicsManager.decoder.decode(_array);
 
-        let index = 0;
-        if (program.attributeIndexMap.hasOwnProperty(name)) {
-            index = program.attributeIndexMap[name];
-        }
-        else {
-            program.attributeIndexObjects.push(GlobalGraphicsManager.gl.getAttribLocation(program, name));
-            program.attributeIndexMap[name] = program.attributeIndexObjects.length - 1;
-            index = program.attributeIndexObjects.length - 1;
-            //program.attributeIndexObjects[index].attributeName = name;
-        }
-        // TODO: All attributes are currently bad, since the attrib indices are now tucked into the program.
-        // Going to have to update any place that uses attributes to use this new indexing scheme, the same
-        // way that uniforms do. But, before that, i need to make uniforms work. 
-        // Currently, binding textures appears to be broken. 
-        return index;
+        return GlobalGraphicsManager.gl.getAttribLocation(program, name);
     }
 
     wasmGraphics_BindVAO(int_vaoId) {
@@ -596,7 +614,7 @@ class GraphicsManager {
             console.log("Trying to access invalid texture");
         }
         let slot = program.uniformIndexObjects[int_uniformSlot];
-	    GlobalGraphicsManager.gl.uniform1i(slot, int_textureId);
+	    GlobalGraphicsManager.gl.uniform1i(slot, int_textureUnitIndex);
     }
 
     wasmGraphics_DeviceSetUniform(int_type, int_slotId, int_count, ptr_data) {
@@ -637,11 +655,11 @@ class GraphicsManager {
         }
         else if (int_type == 8/*UniformType::Float9*/) {
             let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 9);
-            GlobalGraphicsManager.gl.uniformMatrix3fv(slot, GlobalGraphicsManager.gl.FALSE, floatData);
+            GlobalGraphicsManager.gl.uniformMatrix3fv(slot, false, floatData);
         }
         else if (int_type == 9/*UniformType::Float16*/) {
             let floatData = new Float32Array(GlobalGraphicsManager.memory.buffer, ptr_data, int_count * 16);
-            GlobalGraphicsManager.gl.uniformMatrix4fv(slot, GlobalGraphicsManager.gl.FALSE, floatData);
+            GlobalGraphicsManager.gl.uniformMatrix4fv(slot, false, floatData);
         }
     }
 
@@ -655,7 +673,6 @@ class GraphicsManager {
             let set = int_boundTextures & (1 << i);
             if (set) {
                 GlobalGraphicsManager.gl.activeTexture(GlobalGraphicsManager.gl.TEXTURE0 + i);
-                GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_CUBE_MAP, null);
                 GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, null);
             }
         }
@@ -749,10 +766,10 @@ class GraphicsManager {
             GlobalGraphicsManager.shaders.push(shaderProgram);
         }
 
+        // Uniforms are WebGL objects:(
         shaderProgram.uniformIndexMap = {};
         shaderProgram.uniformIndexObjects = [];
-        shaderProgram.attributeIndexMap = {};
-        shaderProgram.attributeIndexObjects = [];
+        // Attributes are just GLuint's
 
         shaderProgram.vertexShaderStr =vertexShaderStr;
         shaderProgram.fragmentShaderStr = fragmentShaderStr;

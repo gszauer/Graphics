@@ -108,12 +108,14 @@ extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, c
 #define GL_RG8							0x822B
 #define GL_RGB8							0x8051
 #define GL_RGBA8						0x8058
+#define GL_RG							0x8227
 #define GL_R32F							0x822E
 #define GL_RG32F						0x8230
 #define GL_RGB32F						0x8815
 #define GL_RGBA32F						0x8814
-#define GL_DEPTH_COMPONENT24				0x81A6
-#define GL_DEPTH_COMPONENT16				0x81A5
+#define GL_DEPTH_COMPONENT24			0x81A6
+#define GL_DEPTH_COMPONENT32F			0x8CAC
+#define GL_DEPTH_COMPONENT16			0x81A5
 #define GL_DEPTH_COMPONENT				0x1902
 #define GL_UNSIGNED_BYTE				0x1401
 #define GL_RGB							0x1907
@@ -149,6 +151,10 @@ extern "C" int wasmGraphics_CompileShader(const void* vShader, int vShaderLen, c
 #define GL_LINEAR_MIPMAP_NEAREST		0x2701
 #define GL_LINEAR_MIPMAP_LINEAR			0x2703
 #define GL_CLAMP_TO_EDGE				0x812F
+
+#define GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD
+#define GL_DEPTH_STENCIL				0x84F9
+#define GL_DEPTH32F_STENCIL8			0x8CAD
 
 // Helpers
 namespace Graphics {
@@ -331,19 +337,20 @@ namespace Graphics {
 				return GL_RGBA32F;
 			}
 
-			return GL_DEPTH_COMPONENT24; // Default to depth i guess
+			return GL_DEPTH_COMPONENT32F; // Default to depth i guess
 		}
 
+		// https://registry.khronos.org/OpenGL-Refpages/es3.0/html/glTexImage2D.xhtml
 		inline TextureFormatResult TextureGetDataFormatFromEnum(TextureFormat component) {
-			GLenum dataFormat = GL_DEPTH_COMPONENT24;
-			GLenum dataType = GL_UNSIGNED_INT; 
+			GLenum dataFormat = GL_DEPTH_COMPONENT;
+			GLenum dataType = GL_FLOAT; 
 
 			if (component == TextureFormat::R8) {
 				dataFormat = GL_RED;
 				dataType = GL_UNSIGNED_BYTE;
 			}
 			else if (component == TextureFormat::RG8) {
-				dataFormat = GL_RG8;
+				dataFormat = GL_RG;
 				dataType = GL_UNSIGNED_BYTE;
 			}
 			if (component == TextureFormat::RGB8) {
@@ -360,7 +367,7 @@ namespace Graphics {
 				dataType = GL_FLOAT;
 			}
 			else if (component == TextureFormat::RG32F) {
-				dataFormat = GL_RG32F;
+				dataFormat = GL_RG;
 				dataType = GL_FLOAT;
 			}
 			if (component == TextureFormat::RGB32F) {
@@ -432,7 +439,7 @@ void Graphics::Texture::SetPCM(bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
 
 	GLenum compareMode = GL_NONE;
-	GLenum compareFunc = GL_NONE;
+	GLenum compareFunc = GL_LEQUAL;
 	if (pcm) {
 		compareMode = GL_COMPARE_REF_TO_TEXTURE;
 		compareFunc = GL_LEQUAL;
@@ -449,6 +456,9 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 	mWidth = width;
 	mHeight = height;
 	mIsMipMapped = genMipMaps;
+
+	GraphicsAssert(mWidth > 0, "Width must be > 0");
+	GraphicsAssert(mHeight > 0, "Height must be > 0");
 
 	wasmGraphics_TextureSetData(mId, internalFormat,  width,  height, f.dataFormat, f.dataType, data, genMipMaps);
 }
@@ -653,6 +663,7 @@ void Graphics::Device::SetScissorState(bool enable, u32 x, u32 y, u32 w, u32 h) 
 		mScissorRect[1] = y;
 		mScissorRect[2] = w;
 		mScissorRect[3] = h;
+		updateRect = true;
 	}
 
 	if (enableScissor || disableScissor || updateRect) {
@@ -978,6 +989,9 @@ void Graphics::Device::Bind(Index& uniformSlot, Texture& texture, Sampler& sampl
 	else {
 		if (sampler.min == Filter::Linear) {
 			min = GL_LINEAR;
+		}
+		else {
+			min = GL_NEAREST;
 		}
 	}
 

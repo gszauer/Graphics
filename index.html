@@ -6,8 +6,11 @@
         <title>Javascript Graphics Sample</title>  
         <meta name="description" content="Graphics Sample">  
 <!--
-        <script type="text/javascript" src="https://spectorcdn.babylonjs.com/spector.bundle.js"></script>
 -->
+<script type="text/javascript" src="https://spectorcdn.babylonjs.com/spector.bundle.js"></script>
+<!--
+-->
+
         <script type="text/javascript" src="Graphics.js"></script>
         <script type="text/javascript" src="mem.js"></script>
 
@@ -57,6 +60,7 @@
                 program.instance.exports.UpdateSample(graphics.devicePtr, deltaTime);
                 program.instance.exports.RenderSample(graphics.devicePtr, 0, 0, 800, 600);
                 lastTime = thisTime;
+                graphics.CheckError();
             }
 
             function start() {
@@ -111,7 +115,7 @@
                         }
                         else {
                             let bodyText = decoder.decode(new Uint8Array(arrayBuffer));
-                            bodyText = bodyText.replace("#version 330 core", "#version 300 es\nprecision highp float;");
+                            bodyText = bodyText.replace("#version 330 core", "#version 300 es\nprecision highp float;\nprecision highp int;");
 
                             size = bodyText.length;
                             ptr_data = allocator.Allocate(size + 1);
