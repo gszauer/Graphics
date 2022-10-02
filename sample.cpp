@@ -2,7 +2,7 @@
 #include "math.h"
 #include "FileLoaders.h"
 
-#define SHADOWMAP_RES 1024
+#define SHADOWMAP_RES 256
 
 Graphics::Index			gLightmapMVP;
 
@@ -124,7 +124,6 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	
 	enablePCM = false;
 	lastPCM   = false;
-	gLightmapDepth->SetPCM(false);
 	gPCMState = gLitNoPCM;
 	gLightmapFBO->AttachDepth(*gLightmapDepth, false);
 
@@ -478,14 +477,12 @@ void Update(Graphics::Device* g, float deltaTime) {
 	GraphicsAssert(gLightmapMVP.valid, "(4) INvalid lightmap mvp?");
 
 	if (lastPCM != enablePCM) {
-		gLightmapDepth->SetPCM(enablePCM);
+		gLightmapFBO->AttachDepth(*gLightmapDepth, enablePCM);
 		if (enablePCM) {
 			gPCMState = gLitWithPCM;
-			gLightmapDepth->SetPCM(true);
 		}
 		else {
 			gPCMState = gLitNoPCM;
-			gLightmapDepth->SetPCM(false);
 		}
 		lastPCM = enablePCM;
 	}
@@ -543,7 +540,11 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	vec3 HemiTop = vec3(0.3f, 0.3f, 0.3f);
 	vec3 HemiBottom = vec3(ambient, ambient, ambient);
 	Graphics::Sampler sampler;
-	Graphics::Sampler depthSampler(Graphics::Filter::Nearest, Graphics::Filter::Nearest, Graphics::Filter::Nearest);
+
+	Graphics::Sampler depthSampler(Graphics::WrapMode::Clamp, Graphics::WrapMode::Clamp, Graphics::Filter::Nearest, Graphics::Filter::Nearest, Graphics::Filter::Nearest);
+	if (gPCMState == gLitWithPCM) {
+		depthSampler = Graphics::Sampler(Graphics::WrapMode::Clamp, Graphics::WrapMode::Clamp, Graphics::Filter::Linear, Graphics::Filter::Linear, Graphics::Filter::Linear);
+	}
 
 	vec3 lightCameraPosition = cameraTarget - normalized(lightDir) * 10.0f;
 	mat4 ShadowView = lookAt(lightCameraPosition, cameraTarget, vec3(0, 1, 0));
@@ -559,6 +560,8 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->SetRenderTarget(gLightmapFBO);
 		gfx->SetViewport(0, 0, SHADOWMAP_RES, SHADOWMAP_RES);
 		gfx->Clear(1.0f);
+
+		gfx->SetFaceCulling(Graphics::CullFace::Front); // TODO: This seems wrong... Should probably change name from set visibility to SetCullFAce.
 #if 1
 		gfx->Bind(gLightmapDrawShader);
 		mat4 mvp = ShadowProjection * ShadowView * model1;
@@ -579,7 +582,7 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		GraphicsAssert(gLightmapMVP.valid, "(e INvalid lightmap mvp?");
 		//gfx->Draw(*gLightmapPlaneLayout, Graphics::DrawMode::Triangles, 0, gLightmapPlaneLayout->GetUserData());
 #endif
-		
+		gfx->SetFaceCulling(Graphics::CullFace::Back);
 	}
 
 	mat4 shadowMatrix1 = shadowMapAdjustment * ShadowProjection * ShadowView * model1;

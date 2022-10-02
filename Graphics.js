@@ -506,10 +506,11 @@ class GraphicsManager {
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.COMPARE_REF_TO_TEXTURE);
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
         }
-        /*else { // Hmmmmmm
-            GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.COMPARE_REF_TO_TEXTURE);
+        else if (bool_pcm) {
+            GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.NONE);
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
-        }*/
+        }
+
         GlobalGraphicsManager.CheckError();
         GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MIN_FILTER, GlobalGraphicsManager.gl.LINEAR);
 		GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MAG_FILTER, GlobalGraphicsManager.gl.LINEAR);

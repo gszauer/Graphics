@@ -154,7 +154,6 @@ namespace Graphics {
 	struct Sampler {
 		WrapMode wrapS;
 		WrapMode wrapT;
-		// TODO: Add PCM here instead of texture?
 		Filter min; // Downscale
 		Filter mip; // Mipmap transition
 		Filter mag; // Upscale
@@ -233,7 +232,6 @@ namespace Graphics {
 		Texture& operator=(const Texture& other) = delete;
 	public:
 		void Set(void* data, TextureFormat dataFormat, u32 width, u32 height, bool genMipMaps);
-		void SetPCM(bool pcm);
 		
 		inline void Set(u32 width, u32 height) {
 			TextureFormat dataFormat = TextureFormat::RGBA8;
@@ -415,7 +413,7 @@ namespace Graphics {
 		~FrameBuffer() = delete;
 	public:
 		void AttachColor(Texture& color, u32 attachmentIndex = 0);
-		void AttachDepth(Texture& depth, bool pcm = true);
+		void AttachDepth(Texture& depth, bool pcf = true);
 		
 		void Resize(u32 width, u32 height);
 		bool IsValid();
@@ -575,7 +573,7 @@ namespace Graphics {
 		// End Blend state
 
 		// Cull state
-		void SetFaceVisibility(CullFace cull, FaceWind wind = FaceWind::CounterClockwise);
+		void SetFaceCulling(CullFace cull, FaceWind wind = FaceWind::CounterClockwise);
 		// End cull state
 
 		// Depth State

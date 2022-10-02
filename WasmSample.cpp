@@ -65,3 +65,22 @@ export void RenderSample(Graphics::Device * gfx, int x, int y, int w, int h) {
         Render(gfx, x, y, w, h);
     }
 }
+
+export bool wasm_ToggleAmbient() {
+	if (ambientOnly > 0.5f) { // If 1
+		ambientOnly = 0.0f; 
+		return false;
+	}
+	ambientOnly = 1.0f;
+	return true;
+}
+
+export bool wasm_ToggleDepth() {
+	ShowDepth = !ShowDepth;
+	return ShowDepth;
+}
+
+export bool wasm_TogglePCM() {
+	enablePCM = !enablePCM;
+	return enablePCM;
+}

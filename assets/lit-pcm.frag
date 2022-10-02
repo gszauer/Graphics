@@ -44,7 +44,5 @@ void main() {
 	vec4 comp1 = vec4(ambient, 1.0);
 	vec4 FinalColor = mix(comp0, comp1, AmbientOnly);
 
-	//vec3 p = LightViewPos.xyz / LightViewPos.w;
-	//FragColor = FinalColor * (texture(uShadowMap, p.xy).r < p.z? 0.0 : 1.0);
 	FragColor = FinalColor * textureProj(uShadowMap, LightViewPos);
 }

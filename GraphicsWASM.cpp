@@ -435,7 +435,7 @@ namespace Graphics {
 }
 
 /// Texture
-void Graphics::Texture::SetPCM(bool pcm) {
+/*void Graphics::Texture::SetPCM(bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
 
 	GLenum compareMode = GL_NONE;
@@ -447,7 +447,7 @@ void Graphics::Texture::SetPCM(bool pcm) {
 	
 
 	wasmGraphics_SetTexturePCM(mId, attachTarget, compareMode, compareFunc);
-}
+}*/
 
 void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32 height, bool genMipMaps) {
 	GLenum internalFormat = Internal::TextureGetInternalFormatFromEnum(mInternalFormat);
@@ -465,7 +465,7 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 
 /// Device
 
-void Graphics::Device::SetFaceVisibility(CullFace cull, FaceWind wind) {
+void Graphics::Device::SetFaceCulling(CullFace cull, FaceWind wind) {
 	bool enableCullFace = false;
 	bool disableCullFace = false;
 	GLenum cullFaceType = GL_BACK;

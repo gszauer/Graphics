@@ -209,7 +209,7 @@ namespace Graphics {
 
 		inline TextureFormatResult TextureGetDataFormatFromEnum(TextureFormat component) {
 			GLenum dataFormat = GL_DEPTH_COMPONENT;
-			GLenum dataType = GL_UNSIGNED_BYTE; 
+			GLenum dataType = GL_FLOAT;
 
 			if (component == TextureFormat::R8) {
 				dataFormat = GL_RED;
@@ -435,7 +435,7 @@ namespace Graphics {
 }
 
 /// Texture
-void Graphics::Texture::SetPCM(bool pcm) {
+/*void Graphics::Texture::SetPCM(bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
 
 	glBindTexture(attachTarget, mId);
@@ -448,7 +448,7 @@ void Graphics::Texture::SetPCM(bool pcm) {
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	}
 	glBindTexture(attachTarget, 0);
-}
+}*/
 
 void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32 height, bool genMipMaps) {
 	glBindTexture(GL_TEXTURE_2D, mId); 
@@ -469,7 +469,7 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 }
 
 /// Device
-void Graphics::Device::SetFaceVisibility(CullFace cull, FaceWind wind) {
+void Graphics::Device::SetFaceCulling(CullFace cull, FaceWind wind) {
 	if (mFaceCulling != cull) {
 		if (cull == CullFace::Back) {
 			if (mFaceCulling == CullFace::Off) {
@@ -1354,13 +1354,15 @@ void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, mId);
-	
 	glBindTexture(attachTarget, depth.mId);
 
 	if (pcm) {
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-		// Could call texture->SetPCM, but that would unbind the texture
+	}
+	else {
+		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	}
 
 	if (depth.mCachedMin != GL_LINEAR) {
@@ -1371,11 +1373,11 @@ void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 		glTexParameteri(attachTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		depth.mCachedMag = GL_LINEAR;
 	}
-	glBindTexture(attachTarget, 0);
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, attachTarget, depth.mId, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
+	glBindTexture(attachTarget, 0);
+
 	mDepth = &depth;
 	mOwner->mBoundFrameBuffer = 0;
 }
