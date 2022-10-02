@@ -48,7 +48,7 @@ class GraphicsManager {
         wasmImportObject.graphicsManager = GlobalGraphicsManager;
         
         GlobalGraphicsManager.env.wasmGraphics_Log = GlobalGraphicsManager.wasmGraphics_Log;
-        GlobalGraphicsManager.env.wasmGraphics_SetTexturePCM = GlobalGraphicsManager.wasmGraphics_SetTexturePCM;
+        //GlobalGraphicsManager.env.wasmGraphics_SetTexturePCM = GlobalGraphicsManager.wasmGraphics_SetTexturePCM;
         GlobalGraphicsManager.env.wasmGraphics_TextureSetData = GlobalGraphicsManager.wasmGraphics_TextureSetData;
         GlobalGraphicsManager.env.wasmGraphics_DeviceSetFaceVisibility = GlobalGraphicsManager.wasmGraphics_DeviceSetFaceVisibility;
         GlobalGraphicsManager.env.wasmGraphics_DeviceClearRGBAD = GlobalGraphicsManager.wasmGraphics_DeviceClearRGBAD;
@@ -255,13 +255,13 @@ class GraphicsManager {
         GlobalGraphicsManager.vbos[int_bufferId] = null;
     }
 
-    wasmGraphics_SetTexturePCM(int_glTextureId, int_glTextureAttachTarget, int_glCompareMode, int_glCompareFunc) {
+   /*wasmGraphics_SetTexturePCM(int_glTextureId, int_glTextureAttachTarget, int_glCompareMode, int_glCompareFunc) {
         let texture = GlobalGraphicsManager.textures[int_glTextureId];
         GlobalGraphicsManager.gl.bindTexture(int_glTextureAttachTarget, texture);
         GlobalGraphicsManager.gl.texParameteri(int_glTextureAttachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, int_glCompareMode);
 		GlobalGraphicsManager.gl.texParameteri(int_glTextureAttachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, int_glCompareFunc);
         GlobalGraphicsManager.gl.bindTexture(int_glTextureAttachTarget, null);
-    }
+    }*/
 
     wasmGraphics_TextureSetData(int_glTextureId, int_glInternalFormat, int_width, int_height, int_glDataFormat, int_glDataFormatType, ptr_data, bool_genMipMaps) {
         if (int_width == 0 || int_height == 0) {
@@ -293,15 +293,16 @@ class GraphicsManager {
         GlobalGraphicsManager.gl.bindTexture(GlobalGraphicsManager.gl.TEXTURE_2D, null);
     }
 
-    wasmGraphics_DeviceSetFaceVisibility(bool_enableCullFace, bool_disableCullFace, int_cullFaceType, bool_changeFace, int_faceWind) {
+    wasmGraphics_DeviceSetFaceVisibility(bool_changecullface, bool_enableCullFace, bool_disableCullFace, int_cullFaceType, bool_changeFace, int_faceWind) {
         if (bool_enableCullFace) {
             GlobalGraphicsManager.gl.enable(GlobalGraphicsManager.gl.CULL_FACE);
-            GlobalGraphicsManager.gl.cullFace(int_cullFaceType);
         }
         else if (bool_disableCullFace) {
             GlobalGraphicsManager.gl.disable(GlobalGraphicsManager.gl.CULL_FACE);
         }
-
+        if (bool_changecullface) {
+            GlobalGraphicsManager.gl.cullFace(int_cullFaceType);
+        }
         if (bool_changeFace) {
             GlobalGraphicsManager.gl.frontFace(int_faceWind);
         }
@@ -506,14 +507,11 @@ class GraphicsManager {
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.COMPARE_REF_TO_TEXTURE);
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
         }
-        else if (bool_pcm) {
+        else {
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_MODE, GlobalGraphicsManager.gl.NONE);
             GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_COMPARE_FUNC, GlobalGraphicsManager.gl.LEQUAL);
         }
 
-        GlobalGraphicsManager.CheckError();
-        GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MIN_FILTER, GlobalGraphicsManager.gl.LINEAR);
-		GlobalGraphicsManager.gl.texParameteri(int_attachTarget, GlobalGraphicsManager.gl.TEXTURE_MAG_FILTER, GlobalGraphicsManager.gl.LINEAR);
 	    GlobalGraphicsManager.gl.framebufferTexture2D(GlobalGraphicsManager.gl.FRAMEBUFFER, GlobalGraphicsManager.gl.DEPTH_ATTACHMENT, int_attachTarget, texture, 0);
         GlobalGraphicsManager.gl.bindTexture(int_attachTarget, null);
 	    GlobalGraphicsManager.gl.bindFramebuffer(GlobalGraphicsManager.gl.FRAMEBUFFER, null);

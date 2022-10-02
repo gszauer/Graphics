@@ -1365,15 +1365,6 @@ void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 		glTexParameteri(attachTarget, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	}
 
-	if (depth.mCachedMin != GL_LINEAR) {
-		glTexParameteri(attachTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		depth.mCachedMin = GL_LINEAR;
-	}
-	if (depth.mCachedMag != GL_LINEAR) {
-		glTexParameteri(attachTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		depth.mCachedMag = GL_LINEAR;
-	}
-
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, attachTarget, depth.mId, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindTexture(attachTarget, 0);

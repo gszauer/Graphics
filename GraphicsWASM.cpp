@@ -22,7 +22,7 @@ extern "C" void wasmGraphics_Log(const char* loc, int locLen, const char* msg, i
 extern "C" void wasmGraphics_SetTexturePCM(int glTextureId, int glTextureAttachTarget, int glCompareMode, int glCompareFunc);
 extern "C" void wasmGraphics_TextureSetData(int glTextureId, int glInternalFormat, int width, int height, int glDataFormat, int glDataFormatType, void* data, bool genMipMaps);
 //extern "C" void wasmGraphics_TextureSetCubemap(int glTextureId, int glInternalFormat, int width, int height, int glDataFormat, int glDataType, void* rightData, void* leftData, void* topData, void* bottomData, void* backData, void* frontData, bool genMipMaps);
-extern "C" void wasmGraphics_DeviceSetFaceVisibility(bool enableCullFace, bool disableCullFace, int cullFaceType, bool changeFace, int faceWind);
+extern "C" void wasmGraphics_DeviceSetFaceVisibility(bool changeglcullface, bool enableCullFace, bool disableCullFace, int cullFaceType, bool changeFace, int faceWind);
 extern "C" void wasmGraphics_DeviceClearRGBAD(float r, float g, float b, float d);
 extern "C" void wasmGraphics_SetDepthState(bool changeDepthState, int depthState, bool changeDepthFunc, int func, bool changeDepthRange, float depthRangeMin, float depthRangeMax);
 extern "C" void wasmGraphics_DeviceClearBufferBits(bool color, bool depth);
@@ -468,6 +468,7 @@ void Graphics::Texture::Set(void* data, TextureFormat dataFormat, u32 width, u32
 void Graphics::Device::SetFaceCulling(CullFace cull, FaceWind wind) {
 	bool enableCullFace = false;
 	bool disableCullFace = false;
+	bool changeCullFace = false;
 	GLenum cullFaceType = GL_BACK;
 	bool changeFace = false;
 	GLenum faceWind = GL_CCW;
@@ -478,18 +479,21 @@ void Graphics::Device::SetFaceCulling(CullFace cull, FaceWind wind) {
 				enableCullFace = true;
 			}
 			cullFaceType = GL_BACK;
+			changeCullFace = true;
 		}
 		else if (cull == CullFace::Front) {
 			if (mFaceCulling == CullFace::Off) {
 				enableCullFace = true;
 			}
 			cullFaceType = GL_FRONT;
+			changeCullFace = true;
 		}
 		else if (cull == CullFace::FrontAndBack) {
 			if (mFaceCulling == CullFace::Off) {
 				enableCullFace = true;
 			}
 			cullFaceType = GL_FRONT_AND_BACK;
+			changeCullFace = true;
 		}
 		else { // Off
 			if (mFaceCulling != CullFace::Off) {
@@ -510,8 +514,8 @@ void Graphics::Device::SetFaceCulling(CullFace cull, FaceWind wind) {
 		mWindingOrder = wind;
 	}
 
-	if (enableCullFace || disableCullFace || changeFace) {
-		wasmGraphics_DeviceSetFaceVisibility(enableCullFace, disableCullFace, cullFaceType, changeFace, faceWind);
+	if (enableCullFace || disableCullFace || changeFace || changeCullFace) {
+		wasmGraphics_DeviceSetFaceVisibility(changeCullFace, enableCullFace, disableCullFace, cullFaceType, changeFace, faceWind);
 	}
 }
 
@@ -1248,9 +1252,6 @@ void Graphics::FrameBuffer::AttachColor(Texture& color, u32 attachmentIndex) {
 
 void Graphics::FrameBuffer::AttachDepth(Texture& depth, bool pcm) {
 	GLenum attachTarget = GL_TEXTURE_2D;
-
-	depth.mCachedMin = GL_LINEAR;
-	depth.mCachedMag = GL_LINEAR;
 
 	mDepth = &depth;
 	mOwner->mBoundFrameBuffer = 0;

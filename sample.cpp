@@ -122,10 +122,16 @@ void Initialize(Graphics::Dependencies* platform, Graphics::Device* gfx) {
 	gLightmapColor = gfx->CreateTexture(Graphics::TextureFormat::RGBA8, SHADOWMAP_RES, SHADOWMAP_RES);
 	gLightmapDepth = gfx->CreateTexture(Graphics::TextureFormat::Depth, SHADOWMAP_RES, SHADOWMAP_RES, 0, Graphics::TextureFormat::Depth, false);
 	
-	enablePCM = false;
-	lastPCM   = false;
-	gPCMState = gLitNoPCM;
-	gLightmapFBO->AttachDepth(*gLightmapDepth, false);
+	enablePCM = true;
+	lastPCM   = enablePCM;
+	if (enablePCM) {
+		gPCMState = gLitWithPCM;
+	}
+	else {
+		gPCMState = gLitNoPCM;
+	}
+	gLightmapFBO->AttachDepth(*gLightmapDepth, enablePCM);
+	//gLightmapFBO->AttachColor(*gLightmapColor);
 
 	//gLightmapFBO->AttachColor(*gLightmapColor);
 	GraphicsAssert(gLightmapFBO->IsValid(), "Invalid fbo");
@@ -476,17 +482,6 @@ void Update(Graphics::Device* g, float deltaTime) {
 	}
 	GraphicsAssert(gLightmapMVP.valid, "(4) INvalid lightmap mvp?");
 
-	if (lastPCM != enablePCM) {
-		gLightmapFBO->AttachDepth(*gLightmapDepth, enablePCM);
-		if (enablePCM) {
-			gPCMState = gLitWithPCM;
-		}
-		else {
-			gPCMState = gLitNoPCM;
-		}
-		lastPCM = enablePCM;
-	}
-
 #if 1
 	camTime += deltaTime * 0.25f;
 	while (camTime >= 360.0f) {
@@ -513,6 +508,17 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 	}
 	if (!isFinishedInitializing) {
 		return;
+	}
+
+	if (lastPCM != enablePCM) {
+		gLightmapFBO->AttachDepth(*gLightmapDepth, enablePCM);
+		if (enablePCM) {
+			gPCMState = gLitWithPCM;
+		}
+		else {
+			gPCMState = gLitNoPCM;
+		}
+		lastPCM = enablePCM;
 	}
 
 	GraphicsAssert(gLightmapMVP.valid, "(5) INvalid lightmap mvp?");
@@ -561,7 +567,7 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->SetViewport(0, 0, SHADOWMAP_RES, SHADOWMAP_RES);
 		gfx->Clear(1.0f);
 
-		gfx->SetFaceCulling(Graphics::CullFace::Front); // TODO: This seems wrong... Should probably change name from set visibility to SetCullFAce.
+		gfx->SetFaceCulling(Graphics::CullFace::Front);
 #if 1
 		gfx->Bind(gLightmapDrawShader);
 		mat4 mvp = ShadowProjection * ShadowView * model1;
@@ -639,7 +645,7 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->Draw(*gPCMState->planeMesh, Graphics::DrawMode::Triangles, 0, gPCMState->planeMesh->GetUserData());
 	}
 
-	if (ShowDepth) { // Draw debug
+	if (ShowDepth && !(gPCMState == gLitWithPCM)) { // Draw debug
 		gfx->SetViewport(w - 20 - 256, h - 20 - 256, 266, 266);
 		gfx->SetScissorState(true, w - 20 - 256, h - 20 - 256, 266, 266);
 		gfx->Clear(0, 0, 0, 1);
@@ -647,7 +653,6 @@ void Render(Graphics::Device * gfx, int x, int y, int w, int h) {
 		gfx->SetViewport(w - 10 - 5 - 256, h - 10 - 5 - 256, 256, 256);
 
 		gfx->Bind(gLightmapBlitShader);
-		//gfx->Bind(gLightmapFboAttachment, *gLightmapColor, sampler);
 		gfx->Bind(gLightmapFboAttachment, *gLightmapDepth, depthSampler);
 		gfx->Draw(*gLightmapMesh, Graphics::DrawMode::TriangleStrip, 0, gLightmapMesh->GetUserData());
 		gfx->SetViewport(0, 0, 800, 600);

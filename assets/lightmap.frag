@@ -10,5 +10,5 @@ float DecodeFloatRGBA(vec4 rgba) {
  }
 
 void main (void) {
-  FragColor = EncodeFloatRGBA(gl_FragCoord.z);
+  FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);//EncodeFloatRGBA(gl_FragCoord.z);
 }
