@@ -39,7 +39,7 @@ C:/WASM/clang.exe -x c++ ^
     -D DEBUG=1 ^
     -D _DEBUG=1 ^
     -o Graphics.wasm ^
-    GraphicsWASM.cpp
+    ../GraphicsWASM.cpp
 
 REM Expand WasmSample.cpp to WasmSampleExpanded.cpp
 REM C:/WASM/clang.exe -x c++ ^

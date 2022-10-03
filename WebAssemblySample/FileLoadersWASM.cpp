@@ -1,4 +1,4 @@
-#include "FileLoaders.h"
+#include "../Win32Sample/FileLoaders.h"
 #include "math.h"
 
 namespace Internal {

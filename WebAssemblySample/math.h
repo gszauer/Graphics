@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _H_MATH_
+#define _H_MATH_
 
 #define VEC3_EPSILON 0.000001f
 #define MAT4_EPSILON 0.000001f
@@ -207,3 +208,5 @@ quat slerp(const quat& start, const quat& end, float t);
 quat lookRotation(const vec3& direcion, const vec3& up);
 mat4 quatToMat4(const quat& q);
 quat mat4ToQuat(const mat4& m);
+
+#endif

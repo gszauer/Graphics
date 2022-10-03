@@ -1,6 +1,6 @@
 #include "Graphics.h"
-#include "math.h"
-#include "FileLoaders.h"
+#include "Win32Sample/math.h"
+#include "Win32Sample/FileLoaders.h"
 
 #define SHADOWMAP_RES 256
 

@@ -16,7 +16,7 @@ static __attribute__((always_inline)) inline void* memcpy (void *dest, const voi
 }
 #endif
 
-#include "GraphicsWASM.cpp"
+#include "../GraphicsWASM.cpp"
 #include "mem.cpp"
 #include "math.cpp"
 
@@ -46,7 +46,7 @@ export fpWasmGraphicsReleaseMem wasmGraphics_GetReleaseFunction() {
 }
 
 #include "FileLoadersWASM.cpp"
-#include "sample.cpp"
+#include "../sample.cpp"
 
 export void StartSample(Graphics::Device* gfx) {
     Graphics::Dependencies deps;

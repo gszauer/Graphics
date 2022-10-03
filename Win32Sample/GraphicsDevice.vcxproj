@@ -203,17 +203,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\gl.h" />
+    <ClInclude Include="..\Graphics.h" />
     <ClInclude Include="FileLoaders.h" />
-    <ClInclude Include="gl.h" />
-    <ClInclude Include="Graphics.h" />
     <ClInclude Include="math.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\GraphicsWin32.cpp" />
+    <ClCompile Include="..\sample.cpp" />
     <ClCompile Include="FileLoadersWin32.cpp" />
     <ClCompile Include="gl.c" />
-    <ClCompile Include="GraphicsWin32.cpp" />
     <ClCompile Include="math.cpp" />
-    <ClCompile Include="sample.cpp" />
     <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

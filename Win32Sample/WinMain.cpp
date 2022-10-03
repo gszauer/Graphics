@@ -1,10 +1,10 @@
 #pragma warning(disable : 28251)
 #pragma warning(disable : 28159)
 
-#include "gl.h"
+#include "../gl.h"
 #undef APIENTRY
 #include <Windows.h>
-#include "Graphics.h"
+#include "../Graphics.h"
 #include "math.h"
 #include "FileLoaders.h"
 
